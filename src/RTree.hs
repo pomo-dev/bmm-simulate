@@ -17,6 +17,8 @@ phylogenetic analysis.
 
 module RTree
   ( RTree(..)
+  , totalBrLn
+  , getLeaves
   ) where
 
 -- The tree data type with states of type a. The branch length of type b is the
@@ -52,14 +54,14 @@ getLeaves :: RTree a b -> [RTree a b]
 getLeaves (Node _ _ lc _ rc) = getLeaves lc ++ getLeaves rc
 getLeaves leaf = [leaf]
 
--- Some examples and tests.
-myLeftLeaf :: RTree Char b
-myLeftLeaf = Leaf 'l'
+-- -- Some examples and tests.
+-- myLeftLeaf :: RTree Char b
+-- myLeftLeaf = Leaf 'l'
 
-myRightLeaf :: RTree Char b
-myRightLeaf = Leaf 'r'
+-- myRightLeaf :: RTree Char b
+-- myRightLeaf = Leaf 'r'
 
 
-myTree :: RTree Char Integer
-myTree = Node 'r' 1 myLeftLeaf 2 myRightLeaf
+-- myTree :: RTree Char Integer
+-- myTree = Node 'r' 1 myLeftLeaf 2 myRightLeaf
 

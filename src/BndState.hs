@@ -54,7 +54,12 @@ data BState = Bnd { bndN :: PopSize
                   , plyB :: Allele }
              deriving (Eq, Show, Read)
 
--- A total order on the boundary states. The sorting order is N > A.
+-- A total order on the boundary mutation model states. In general, Bnd < Ply.
+-- Then, sorting happens according to the order population size, first allele,
+-- second allele, allele count. It may be beneficial to reverse the allele count
+-- order (i.e., make a polymorphic state with higher allele count show up before
+-- a polymorphic state with lower allele count, this would move some polymorphic
+-- states closer to their respective boundaries),
 instance Ord BState where
   Bnd {} <= Ply {}            = True
   Ply {} <= Bnd {}            = False
