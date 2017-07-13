@@ -35,3 +35,13 @@ rateMatrixSetDiagonal :: RateMatrix -> RateMatrix
 rateMatrixSetDiagonal m = diagZeroes - diag (fromList rowSums)
   where diagZeroes = matrixSetDiagToZero m
         rowSums    = map norm_1 $ toRows diagZeroes
+
+-- This may be moved to a different module ProbMatrix or alike.
+type BranchLength = Double
+type ProbMatrix   = Matrix R
+
+-- The important matrix that gives the probabilities to move from one state to
+-- another in a specific time (branch length).
+probMatrix :: RateMatrix -> BranchLength -> ProbMatrix
+probMatrix m t = expm $ scale t m
+

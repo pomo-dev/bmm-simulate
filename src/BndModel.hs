@@ -65,11 +65,3 @@ bmRateByDouble m n x y = bmRateByIndex m n (round x) (round y)
 rateMatrixBM :: MutModel -> PopSize -> RateMatrix
 rateMatrixBM m n = rateMatrixSetDiagonal $ build (s,s) (bmRateByDouble m n)
   where s = stateSpaceSize n
-
-type BranchLength = Double
-type ProbMatrix   = Matrix R
-
--- The important matrix that gives the probabilities to move from one state to
--- another in a specific time (branch length).
-probMatrix :: RateMatrix -> BranchLength -> ProbMatrix
-probMatrix m t = expm $ scale t m
