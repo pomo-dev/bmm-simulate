@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-missing-import-lists #-}
 {-# OPTIONS_GHC -fno-warn-implicit-prelude #-}
-module Paths_bmm_sim (
+module Paths_bmm_simulate (
     version,
     getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir,
     getDataFileName, getSysconfDir
@@ -30,19 +30,19 @@ version = Version [0,1,0,0] []
 bindir, libdir, dynlibdir, datadir, libexecdir, sysconfdir :: FilePath
 
 bindir     = "/home/dominik/.cabal/bin"
-libdir     = "/home/dominik/.cabal/lib/x86_64-linux-ghc-8.0.2/bmm-sim-0.1.0.0"
+libdir     = "/home/dominik/.cabal/lib/x86_64-linux-ghc-8.0.2/bmm-simulate-0.1.0.0"
 dynlibdir  = "/home/dominik/.cabal/lib/x86_64-linux-ghc-8.0.2"
-datadir    = "/home/dominik/.cabal/share/x86_64-linux-ghc-8.0.2/bmm-sim-0.1.0.0"
+datadir    = "/home/dominik/.cabal/share/x86_64-linux-ghc-8.0.2/bmm-simulate-0.1.0.0"
 libexecdir = "/home/dominik/.cabal/libexec"
 sysconfdir = "/home/dominik/.cabal/etc"
 
 getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath
-getBinDir = catchIO (getEnv "bmm_sim_bindir") (\_ -> return bindir)
-getLibDir = catchIO (getEnv "bmm_sim_libdir") (\_ -> return libdir)
-getDynLibDir = catchIO (getEnv "bmm_sim_dynlibdir") (\_ -> return dynlibdir)
-getDataDir = catchIO (getEnv "bmm_sim_datadir") (\_ -> return datadir)
-getLibexecDir = catchIO (getEnv "bmm_sim_libexecdir") (\_ -> return libexecdir)
-getSysconfDir = catchIO (getEnv "bmm_sim_sysconfdir") (\_ -> return sysconfdir)
+getBinDir = catchIO (getEnv "bmm_simulate_bindir") (\_ -> return bindir)
+getLibDir = catchIO (getEnv "bmm_simulate_libdir") (\_ -> return libdir)
+getDynLibDir = catchIO (getEnv "bmm_simulate_dynlibdir") (\_ -> return dynlibdir)
+getDataDir = catchIO (getEnv "bmm_simulate_datadir") (\_ -> return datadir)
+getLibexecDir = catchIO (getEnv "bmm_simulate_libexecdir") (\_ -> return libexecdir)
+getSysconfDir = catchIO (getEnv "bmm_simulate_sysconfdir") (\_ -> return sysconfdir)
 
 getDataFileName :: FilePath -> IO FilePath
 getDataFileName name = do
