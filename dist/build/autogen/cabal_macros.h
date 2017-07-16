@@ -105,7 +105,7 @@
   (major1) == 2 && (major2) <  28 || \
   (major1) == 2 && (major2) == 28 && (minor) <= 0)
 
-#define CURRENT_COMPONENT_ID "bmm-simulate-0.1.0.0"
+#define CURRENT_COMPONENT_ID "bmm-simulate-0.1.0.0-6GWozs70B554QCBPU7kCde"
 
-#define CURRENT_PACKAGE_KEY "bmm-simulate-0.1.0.0"
+#define CURRENT_PACKAGE_KEY "bmm-simulate-0.1.0.0-6GWozs70B554QCBPU7kCde"
 

@@ -30,7 +30,7 @@ version = Version [0,1,0,0] []
 bindir, libdir, dynlibdir, datadir, libexecdir, sysconfdir :: FilePath
 
 bindir     = "/home/dominik/.cabal/bin"
-libdir     = "/home/dominik/.cabal/lib/x86_64-linux-ghc-8.0.2/bmm-simulate-0.1.0.0"
+libdir     = "/home/dominik/.cabal/lib/x86_64-linux-ghc-8.0.2/bmm-simulate-0.1.0.0-6GWozs70B554QCBPU7kCde"
 dynlibdir  = "/home/dominik/.cabal/lib/x86_64-linux-ghc-8.0.2"
 datadir    = "/home/dominik/.cabal/share/x86_64-linux-ghc-8.0.2/bmm-simulate-0.1.0.0"
 libexecdir = "/home/dominik/.cabal/libexec"
