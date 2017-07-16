@@ -17,17 +17,17 @@ This module defines the transition rate matrix of the boundary mutation model.
 module BndModel
   where
 
-import Numeric.LinearAlgebra
-import BndState ( Allele
-                , PopSize
-                , BState(..)
-                , stateSpaceSize
-                , indToBState
-                , connected)
-import RateMatrix
+import           BndState              (Allele, BState (..), PopSize, connected,
+                                        idToBState, stateSpaceSize)
+import           DNAModel
+import           Numeric.LinearAlgebra
+import           RateMatrix
+import           Tools
 
 -- The boundary mutation models uses an underlying mutation model.
-type MutModel   = RateMatrix
+type MutModel         = RateMatrix
+-- Let's just give rate matrices of the boundary mutation model a special name.
+type BMModel          = RateMatrix
 
 -- First we need to define a mutation model.
 mutRate :: MutModel -> Allele -> Allele -> Double
@@ -35,33 +35,91 @@ mutRate m a b = m ! i ! j
   where i = fromEnum a
         j = fromEnum b
 
-moranRate :: PopSize -> Int -> Double
-moranRate n i = fromIntegral i * (fromIntegral n - fromIntegral i) / fromIntegral n
+stateFreq :: StateFreqVec -> Allele -> Double
+stateFreq f a = f ! fromEnum a
+
+moranCoef :: PopSize -> Int -> Double
+moranCoef n i = iD * (nD - iD) / nD
+  where iD = fromIntegral i
+        nD = fromIntegral n
 
 -- The transition rate from one state to another.
-bmRate :: MutModel -> BState -> BState -> Double
-bmRate m s t
+rate :: MutModel -> BState -> BState -> Double
+rate m s t
   | not $ connected s t = 0.0
-  | otherwise           = rate s t
-  where rate (Ply n i _ _) _ = moranRate n i
-        rate (Bnd _ a) (Ply _ _ b c)
+  | otherwise           = rate' s t
+  where rate' (Ply n i _ _) _ = moranCoef n i
+        rate' (Bnd _ a) (Ply _ _ b c)
           | a == b    = mutRate m a c
           | a == c    = mutRate m a b
           | otherwise = error "Cannot compute rate between states."
-        rate _ _ = error "Cannot compute rate between states."
+        rate' _ _ = error "Cannot compute rate between states."
 
 -- The transition rate from one index to another.
-bmRateByIndex :: MutModel -> PopSize -> Int -> Int -> Double
-bmRateByIndex m n i j = bmRate m s t
-  where s = indToBState n i
-        t = indToBState n j
+rateById :: MutModel -> PopSize -> Int -> Int -> Double
+rateById m n i j = rate m s t
+  where s = idToBState n i
+        t = idToBState n j
 
 -- The build function (see below) has a weird way of assigning entries to
 -- indices. The indices have to be the same data type as the entries. This is
 -- just a helper function that changes the indices from Double to Int.
-bmRateByDouble :: MutModel -> PopSize -> Double -> Double -> Double
-bmRateByDouble m n x y = bmRateByIndex m n (round x) (round y)
+rateByDouble :: MutModel -> PopSize -> Double -> Double -> Double
+rateByDouble m n x y = rateById m n (round x) (round y)
 
-rateMatrixBM :: MutModel -> PopSize -> RateMatrix
-rateMatrixBM m n = rateMatrixSetDiagonal $ build (s,s) (bmRateByDouble m n)
+rateMatrixBM :: MutModel -> PopSize -> BMModel
+rateMatrixBM m n = rateMatrixSetDiagonal $ build (s,s) (rateByDouble m n)
   where s = stateSpaceSize n
+
+-- Define a heterozygosity to make function definitions clearer.
+type Heterozygosity = Double
+
+-- Calculate the heterozygosity at stationarity.
+theta :: MutModel -> StateFreqVec -> Heterozygosity
+theta m f = f <.> rDiagZero #> f
+  where e         = rateMatrixToExchMatrix m f
+        (r, _)    = separateMatrixSymSkew e
+        -- The summation excludes the diagonal (a /= b).
+        rDiagZero = matrixSetDiagToZero r
+
+-- The normalization constant of the stationary distribution.
+norm :: MutModel -> StateFreqVec -> PopSize -> Double
+norm m f n = 1.0 + harmonic (n-1) * theta m f
+
+-- Get entries of the stationary measure (not normalized) for a boundary model state.
+stationaryMeasEntry :: MutModel -> StateFreqVec -> BState -> Double
+stationaryMeasEntry _ f (Bnd _ a)     = piA
+  where piA = f ! fromEnum a
+stationaryMeasEntry m f (Ply n i a b) = piA * mAB / (fromIntegral n - fromIntegral i)
+                                          + piB * mBA / fromIntegral i
+  where piA = stateFreq f a
+        mAB = mutRate m a b
+        piB = stateFreq f b
+        mBA = mutRate m b a
+
+-- Only use this function when accessing single elements of the stationary
+-- distribution. Otherwise, computation of the norm is unnecessarily repeated.
+stationaryDistEntry :: MutModel -> StateFreqVec -> PopSize -> BState -> Double
+stationaryDistEntry m f n s = stationaryMeasEntry m f s / norm m f n
+
+stationaryMeasEntryById :: MutModel -> StateFreqVec -> PopSize -> Int -> Double
+stationaryMeasEntryById m f n i = stationaryMeasEntry m f s
+  where s = idToBState n i
+
+stationaryMeasEntryByDouble :: MutModel -> StateFreqVec -> PopSize -> Double -> Double
+stationaryMeasEntryByDouble m f n x = stationaryMeasEntryById m f n (round x)
+
+stationaryDist :: MutModel -> StateFreqVec -> PopSize -> StationaryDist
+stationaryDist m f n = scale (1.0/norm m f n) $
+  build s (stationaryMeasEntryByDouble m f n)
+  where s = stateSpaceSize n
+
+-- Normalize the mutation coefficients such that the heterozygosity matches a
+-- given level (see Eq. 12.14 in my thesis).
+normalizeToTheta :: MutModel -> StateFreqVec -> PopSize -> Heterozygosity -> MutModel
+normalizeToTheta m f n h = scale (h / (t * (1.0 - c * h))) m
+  where
+    -- The heterozygosity of the boundary mutation model.
+    t = theta m f
+    -- The branch length multiplicative factor introduced by the coalescent.
+    c = harmonic (n-1)

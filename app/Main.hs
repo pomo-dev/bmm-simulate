@@ -13,22 +13,21 @@ boundary mutation model. The output is a counts file.
 
 * Changelog
 
+TODO DEBUG DEBUG
+
 -}
-
-
-module Main where
 
 import Numeric.LinearAlgebra
 import BndModel
 import DNAModel
-import RateMatrix
 
 main :: IO ()
 main = do
-  let f = vector [0.3, 0.2, 0.2, 0.3]
-      m = rateMatrixHKY f 6.0
-      q = rateMatrixBM m 9
-      p = probMatrix q 0.3
-  print q
-  print p
+  let f = vector (replicate 4 0.25)
+      q = rateMatrixHKY f 6.0
+      n = 9
+      het = 0.0025
+      qNorm = bmNormalizeToTheta q f n het
+      m = rateMatrixBM qNorm n
+  print m
   return ()

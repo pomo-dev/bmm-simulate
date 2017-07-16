@@ -19,14 +19,20 @@ module RateMatrix where
 
 import Numeric.LinearAlgebra
 
-type StateFreqVec = Vector R
-type RateMatrix   = Matrix R
+-- A rate matrix is just a real matrix.
+type RateMatrix     = Matrix R
+-- A matrix of exchangeabilities, we have q = e * pi, where q is a rate matrix,
+-- e is the exchangeability matrix and pi is the diagonal matrix containing the
+-- stationary frequency distribution.
+type ExchMatrix     = Matrix R
+-- Stationary distribution of a rate matrix.
+type StationaryDist = Vector R
 
 matrixSetDiagToZero :: Matrix R -> Matrix R
 matrixSetDiagToZero m = m - diag (takeDiag m)
 
 -- Normalizes a Markov process generator such that one event happens per unit time.
-rateMatrixNormalize :: StateFreqVec -> RateMatrix -> RateMatrix
+rateMatrixNormalize :: StationaryDist -> RateMatrix -> RateMatrix
 rateMatrixNormalize f m = scale (1.0 / totalRate) m
   where totalRate = norm_1 $ f <# matrixSetDiagToZero m
 
@@ -35,6 +41,11 @@ rateMatrixSetDiagonal :: RateMatrix -> RateMatrix
 rateMatrixSetDiagonal m = diagZeroes - diag (fromList rowSums)
   where diagZeroes = matrixSetDiagToZero m
         rowSums    = map norm_1 $ toRows diagZeroes
+
+-- Extract the exchangeability matrix from a rate matrix.
+rateMatrixToExchMatrix :: RateMatrix -> StationaryDist -> ExchMatrix
+rateMatrixToExchMatrix m f = m <> diag oneOverF
+  where oneOverF = cmap (1.0/) f
 
 -- This may be moved to a different module ProbMatrix or alike.
 type BranchLength = Double

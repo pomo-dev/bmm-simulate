@@ -22,8 +22,8 @@ module BndState
   , BState(..)
   , stateSpace
   , stateSpaceSize
-  , bStateInd
-  , indToBState
+  , bStateId
+  , idToBState
   , connected
   ) where
 
@@ -112,11 +112,11 @@ stateSpaceSize :: PopSize -> Int
 stateSpaceSize n = k + k*(k-1) `div` 2 * (n-1)
   where k = nAlleles
 
-bStateInd :: BState -> Maybe Int
-bStateInd s = elemIndex s (stateSpace $ getPopSize s)
+bStateId :: BState -> Maybe Int
+bStateId s = elemIndex s (stateSpace $ getPopSize s)
 
-indToBState :: PopSize -> Int -> BState
-indToBState n i = stateSpace n !! i
+idToBState :: PopSize -> Int -> BState
+idToBState n i = stateSpace n !! i
 
 -- Check if two states are connected. By definition, states are NOT connected
 -- with themselves.

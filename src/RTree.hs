@@ -31,6 +31,13 @@ data RTree a b = Node { state :: a
                | Leaf { state :: a }
                deriving (Eq, Show, Read)
 
+-- Make (RTree a) a functor. Like this, we can scale branch lengths or convert
+-- them to transition probability matrices.
+instance Functor (RTree a) where
+  fmap _ (Leaf a) = Leaf a
+  fmap f (Node a lb lc rb rc) = Node a (f lb) (fmap f lc) (f rb) (fmap f rc)
+
+-- The total branch length; only works when the branch lengths are numbers.
 totalBrLn :: Num b => RTree a b -> b
 totalBrLn (Leaf _) = 0
 totalBrLn t = lBrLn t  + rBrLn t
@@ -64,4 +71,3 @@ getLeaves leaf = [leaf]
 
 -- myTree :: RTree Char Integer
 -- myTree = Node 'r' 1 myLeftLeaf 2 myRightLeaf
-
