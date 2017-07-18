@@ -23,6 +23,7 @@ import           DNAModel
 import           Numeric.LinearAlgebra
 import           RateMatrix
 import           Tools
+import           RTree
 
 -- The boundary mutation models uses an underlying mutation model.
 type MutModel         = RateMatrix
@@ -67,8 +68,8 @@ rateById m n i j = rate m s t
 rateByDouble :: MutModel -> PopSize -> Double -> Double -> Double
 rateByDouble m n x y = rateById m n (round x) (round y)
 
-rateMatrixBM :: MutModel -> PopSize -> BMModel
-rateMatrixBM m n = rateMatrixSetDiagonal $ build (s,s) (rateByDouble m n)
+rateMatrix :: MutModel -> PopSize -> BMModel
+rateMatrix m n = setDiagonal $ build (s,s) (rateByDouble m n)
   where s = stateSpaceSize n
 
 -- Define a heterozygosity to make function definitions clearer.
@@ -77,8 +78,8 @@ type Heterozygosity = Double
 -- Calculate the heterozygosity at stationarity.
 theta :: MutModel -> StateFreqVec -> Heterozygosity
 theta m f = f <.> rDiagZero #> f
-  where e         = rateMatrixToExchMatrix m f
-        (r, _)    = separateMatrixSymSkew e
+  where e         = toExchMatrix m f
+        (r, _)    = matrixSeparateSymSkew e
         -- The summation excludes the diagonal (a /= b).
         rDiagZero = matrixSetDiagToZero r
 
@@ -123,3 +124,12 @@ normalizeToTheta m f n h = scale (h / (t * (1.0 - c * h))) m
     t = theta m f
     -- The branch length multiplicative factor introduced by the coalescent.
     c = harmonic (n-1)
+
+-- The branch lengths of threes in the boundary mutation model are not measured
+-- in average number of substitutions per site but in average number of
+-- mutations or frequency shifts per site. The conversion factor is just the
+-- square of the population size. This function converts the branch lengths of a
+-- tree.
+scaleTreeToBMM :: PopSize -> RTree a Double -> RTree a Double
+scaleTreeToBMM n = fmap (* nSq)
+  where nSq = fromIntegral n ** 2

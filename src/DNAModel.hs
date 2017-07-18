@@ -42,5 +42,5 @@ exchangeabilityMatrixHKY k = (4><4)
   , 1.0,   k, 1.0, 0.0 ]
 -- HKY model mutation matrix normalized so that one mutation happens per unit time.
 rateMatrixHKY :: StateFreqVec -> Kappa -> DNAModel
-rateMatrixHKY f k = rateMatrixNormalize f $ rateMatrixSetDiagonal $ exch <> diag f
+rateMatrixHKY f k = normalizeRates f $ setDiagonal $ exch <> diag f
   where exch = exchangeabilityMatrixHKY k

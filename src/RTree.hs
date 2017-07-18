@@ -21,8 +21,8 @@ module RTree
   , getLeaves
   ) where
 
--- The tree data type with states of type a. The branch length of type b is the
--- length from the current to the left and right child.
+-- The tree data type with node names or states of type a. The branch length of
+-- type b is the length from the current to the left and right child.
 data RTree a b = Node { state :: a
                       , lBrLn :: b
                       , lChld :: RTree a b

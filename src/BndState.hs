@@ -29,6 +29,7 @@ module BndState
 
 import DNAModel
 import Data.List
+import Tools
 
 -- First, we need to define the state space.
 
@@ -52,7 +53,18 @@ data BState = Bnd { bndN :: PopSize
                   , plyI :: AlleleCount
                   , plyA :: Allele
                   , plyB :: Allele }
-             deriving (Eq, Show, Read)
+             deriving (Eq, Read)
+
+instance Show BState where
+  show (Bnd n a) =  foldl1 (++) $ intersperse "," $ map toCounts allValues
+    where toCounts b
+            | a == b    = show n
+            | otherwise = "0"
+  show (Ply n i a b) = foldl1 (++) $ intersperse "," $ map toCounts allValues
+    where toCounts c
+            | c == a    = show i
+            | c == b    = show (n-i)
+            | otherwise = "0"
 
 -- A total order on the boundary mutation model states. In general, Bnd < Ply.
 -- Then, sorting happens according to the order population size, first allele,

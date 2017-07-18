@@ -18,6 +18,7 @@ continuous-time discrete-state Markov processes.
 module RateMatrix where
 
 import Numeric.LinearAlgebra
+import Tools
 
 -- A rate matrix is just a real matrix.
 type RateMatrix     = Matrix R
@@ -28,23 +29,20 @@ type ExchMatrix     = Matrix R
 -- Stationary distribution of a rate matrix.
 type StationaryDist = Vector R
 
-matrixSetDiagToZero :: Matrix R -> Matrix R
-matrixSetDiagToZero m = m - diag (takeDiag m)
-
 -- Normalizes a Markov process generator such that one event happens per unit time.
-rateMatrixNormalize :: StationaryDist -> RateMatrix -> RateMatrix
-rateMatrixNormalize f m = scale (1.0 / totalRate) m
+normalizeRates :: StationaryDist -> RateMatrix -> RateMatrix
+normalizeRates f m = scale (1.0 / totalRate) m
   where totalRate = norm_1 $ f <# matrixSetDiagToZero m
 
 -- Set the diagonal entries of a matrix such that the rows sum to 0.
-rateMatrixSetDiagonal :: RateMatrix -> RateMatrix
-rateMatrixSetDiagonal m = diagZeroes - diag (fromList rowSums)
+setDiagonal :: RateMatrix -> RateMatrix
+setDiagonal m = diagZeroes - diag (fromList rowSums)
   where diagZeroes = matrixSetDiagToZero m
         rowSums    = map norm_1 $ toRows diagZeroes
 
 -- Extract the exchangeability matrix from a rate matrix.
-rateMatrixToExchMatrix :: RateMatrix -> StationaryDist -> ExchMatrix
-rateMatrixToExchMatrix m f = m <> diag oneOverF
+toExchMatrix :: RateMatrix -> StationaryDist -> ExchMatrix
+toExchMatrix m f = m <> diag oneOverF
   where oneOverF = cmap (1.0/) f
 
 -- This may be moved to a different module ProbMatrix or alike.

@@ -18,13 +18,19 @@ module Tools where
 
 import Numeric.LinearAlgebra
 
+allValues :: (Bounded a, Enum a) => [a]
+allValues = [minBound..]
+
 harmonic :: Int -> Double
 harmonic 1 = 1.0
-harmonic n = 1.0 / (fromIntegral n) + harmonic (n-1)
+harmonic n = 1.0 / fromIntegral n + harmonic (n-1)
 
 -- Separate a matrix into a symmetric and a skew-symmetric matrix.
-separateMatrixSymSkew :: Matrix R -> (Matrix R, Matrix R)
-separateMatrixSymSkew m = (sym, skew)
+matrixSeparateSymSkew :: Matrix R -> (Matrix R, Matrix R)
+matrixSeparateSymSkew m = (mSym, mSkew)
   where trM = tr m
-        sym  = scale 0.5 $ m + trM
-        skew = scale 0.5 $ m - trM
+        mSym  = scale 0.5 $ m + trM
+        mSkew = scale 0.5 $ m - trM
+
+matrixSetDiagToZero :: Matrix R -> Matrix R
+matrixSetDiagToZero m = m - diag (takeDiag m)
