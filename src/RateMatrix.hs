@@ -5,7 +5,7 @@ Copyright   :  (c) Dominik Schrempf 2017
 License     :  GPLv3
 
 Maintainer  :  dominik.schrempf@gmail.com
-Stability   :  unstable 
+Stability   :  unstable
 Portability :  non-portable (not tested)
 
 Some helper functions that come handy when working with rate matrices of
@@ -17,11 +17,14 @@ continuous-time discrete-state Markov processes.
 
 module RateMatrix where
 
-import Numeric.LinearAlgebra
-import Tools
+import           Numeric.LinearAlgebra
+import           RTree
+import           Tools
 
 -- A rate matrix is just a real matrix.
 type RateMatrix     = Matrix R
+-- A state is just an integer at the moment.
+type State          = Int
 -- A matrix of exchangeabilities, we have q = e * pi, where q is a rate matrix,
 -- e is the exchangeability matrix and pi is the diagonal matrix containing the
 -- stationary frequency distribution.
@@ -44,13 +47,4 @@ setDiagonal m = diagZeroes - diag (fromList rowSums)
 toExchMatrix :: RateMatrix -> StationaryDist -> ExchMatrix
 toExchMatrix m f = m <> diag oneOverF
   where oneOverF = cmap (1.0/) f
-
--- This may be moved to a different module ProbMatrix or alike.
-type BranchLength = Double
-type ProbMatrix   = Matrix R
-
--- The important matrix that gives the probabilities to move from one state to
--- another in a specific time (branch length).
-probMatrix :: RateMatrix -> BranchLength -> ProbMatrix
-probMatrix m t = expm $ scale t m
 

@@ -44,7 +44,7 @@ moranCoef n i = iD * (nD - iD) / nD
   where iD = fromIntegral i
         nD = fromIntegral n
 
--- The transition rate from one state to another.
+-- The transition rate from one boundary state to another.
 rate :: MutModel -> BState -> BState -> Double
 rate m s t
   | not $ connected s t = 0.0
@@ -56,8 +56,8 @@ rate m s t
           | otherwise = error "Cannot compute rate between states."
         rate' _ _ = error "Cannot compute rate between states."
 
--- The transition rate from one index to another.
-rateById :: MutModel -> PopSize -> Int -> Int -> Double
+-- The transition rate from one state (index) to another.
+rateById :: MutModel -> PopSize -> State -> State -> Double
 rateById m n i j = rate m s t
   where s = idToBState n i
         t = idToBState n j

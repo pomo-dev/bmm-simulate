@@ -16,10 +16,14 @@ phylogenetic analysis.
 -}
 
 module RTree
-  ( RTree(..)
+  ( BranchLn
+  , RTree(..)
   , totalBrLn
   , getLeaves
   ) where
+
+-- Branch lengths on trees are measured in Double.
+type BranchLn = Double
 
 -- The tree data type with node names or states of type a. The branch length of
 -- type b is the length from the current to the left and right child.
@@ -38,7 +42,7 @@ instance Functor (RTree a) where
   fmap f (Node a lb lc rb rc) = Node a (f lb) (fmap f lc) (f rb) (fmap f rc)
 
 -- The total branch length; only works when the branch lengths are numbers.
-totalBrLn :: Num b => RTree a b -> b
+totalBrLn :: RTree a BranchLn -> BranchLn
 totalBrLn (Leaf _) = 0
 totalBrLn t = lBrLn t  + rBrLn t
                       + totalBrLn (lChld t)
