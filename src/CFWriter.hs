@@ -31,7 +31,7 @@ type PopulationNames = [String]
 
 -- Write a header file.
 getHeader :: NSites -> PopulationNames -> String
-getHeader nSites popNames = lineOne ++ "\n" ++ lineTwo
+getHeader nSites popNames = lineOne ++ "\n" ++ lineTwo ++ "\n"
   where nPop = length popNames
         lineOne = "COUNTSFILE NPOP " ++ show nPop ++ " NSITES " ++ show nSites
         lineTwo = "CHROM POS " ++ unwords popNames
@@ -42,19 +42,24 @@ type Chrom = String
 -- The position on the chromosome.
 type Pos   = Int
 
+-- The set of boundary states for one site.
+type DataOneSite = [BState]
+
 -- Get a data line in the counts file.
-getDataLine :: Chrom -> Pos -> [BState] -> String
-getDataLine chrom pos bstates = chrom ++ " " ++ show pos ++ bStatesString
+getDataLine :: Chrom -> Pos -> DataOneSite -> String
+getDataLine chrom pos bstates = chrom ++ " " ++ show pos ++ " " ++ bStatesString ++ "\n"
   where bStatesString = unwords $ map show bstates
+
+-- At the moment, all data is passed around in one go, if I have problems, I
+-- have to separate writing on a line per line basis.
+type DataAllSites = [DataOneSite]
 
 -- Write a counts file. For now, the chromosome name is set to SIM for simulated
 -- and the position is just a counter starting at 1.
---
--- At the moment, all data is passed around in one go, if I have problems, I
--- have to separate writing on a line per line basis.
-write :: FilePath -> NSites -> PopulationNames -> [[BState]] -> IO ()
+write :: FilePath -> NSites -> PopulationNames -> DataAllSites -> IO ()
 write fileName nSites popNames bStatesArray = do
   handle <- openFile fileName WriteMode
   hPutStr handle $ getHeader nSites popNames
   let dataLines = zipWith (getDataLine "SIM") [1..] bStatesArray
   mapM_ (hPutStr handle) dataLines
+  hClose handle

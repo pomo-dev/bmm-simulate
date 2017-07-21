@@ -18,7 +18,6 @@ continuous-time discrete-state Markov processes.
 module RateMatrix where
 
 import           Numeric.LinearAlgebra
-import           RTree
 import           Tools
 
 -- A rate matrix is just a real matrix.

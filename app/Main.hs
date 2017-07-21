@@ -16,6 +16,8 @@ boundary mutation model. The output is a counts file.
 -}
 
 import qualified BndModel                  as BM
+import qualified BndState                  as BS
+import qualified CFWriter                  as CF
 import           Control.Monad.Random.Lazy
 import qualified DNAModel                  as DNA
 import qualified ExampleRTrees             as Trees
@@ -24,10 +26,14 @@ import qualified Transition                as Trans
 
 -- TODO: Read in the simulation parameters such as tree type, mutation model
 -- with parameters, stationary distribution, heterozygosity, population size.
+
+-- TODO: Properly output simulation parameters.
+
 main :: IO ()
 main = do
+  print "Boundary mutation model simulator."
   let stateFreqs      = vector [0.3, 0.2, 0.2, 0.3]
-      popSize         = 10
+      popSize         = 9
       -- The heterozygosity value.
       heterozygosity  = 0.0025
       -- A kappa value of 6.25 corresponds to a transition to transversion ratio of 3.0
@@ -37,6 +43,11 @@ main = do
       treeBrLn        = BM.scaleTreeToBMM popSize Trees.ilsTree1Ne
       treeTransProb   = Trans.branchLengthsToTransitionProbs rateMatrix treeBrLn
       stationaryDist  = BM.stationaryDist mutationModel stateFreqs popSize
-  leafs <- evalRandIO (Trans.simulateNSites 1000 stationaryDist treeTransProb)
-  print leafs
-  return ()
+      nSites          = 100000
+  print "The mutation model matrix is:"
+  print mutationModel
+  leafs <- evalRandIO (Trans.simulateNSites nSites stationaryDist treeTransProb)
+  let popNames     = map fst $ head leafs
+      dataAllSites = map (map (BS.idToBState popSize . snd)) leafs
+      fileName     = "Test.cf"
+  CF.write fileName nSites popNames dataAllSites

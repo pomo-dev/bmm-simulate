@@ -27,9 +27,10 @@ module BndState
   , connected
   ) where
 
-import DNAModel
-import Data.List
-import Tools
+import           Data.List
+import           DNAModel
+import           RateMatrix
+import           Tools
 
 -- First, we need to define the state space.
 
@@ -105,8 +106,8 @@ filterValidBState :: [BState] -> [BState]
 filterValidBState = filter validBState
 
 getPopSize :: BState -> PopSize
-getPopSize (Bnd n _)  = n
-getPopSize (Ply n _ _ _)  = n
+getPopSize (Bnd n _)     = n
+getPopSize (Ply n _ _ _) = n
 
 -- | Sorted list of all possible PoMo states for a specific population size.
 stateSpace :: PopSize -> [BState]
@@ -127,7 +128,7 @@ stateSpaceSize n = k + k*(k-1) `div` 2 * (n-1)
 bStateId :: BState -> Maybe Int
 bStateId s = elemIndex s (stateSpace $ getPopSize s)
 
-idToBState :: PopSize -> Int -> BState
+idToBState :: PopSize -> State -> BState
 idToBState n i = stateSpace n !! i
 
 -- Check if two states are connected. By definition, states are NOT connected
