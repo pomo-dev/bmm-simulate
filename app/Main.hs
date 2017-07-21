@@ -27,7 +27,11 @@ import qualified Transition                as Trans
 -- TODO: Read in the simulation parameters such as tree type, mutation model
 -- with parameters, stationary distribution, heterozygosity, population size.
 
--- TODO: Properly output simulation parameters.
+-- TODO: Properly output simulation parameters and command line and the seed
+-- (everything needed to repeat simulations and to access all relevant
+-- parameters).
+
+-- TODO: Testing (Quicktest?).
 
 main :: IO ()
 main = do
