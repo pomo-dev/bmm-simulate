@@ -20,6 +20,7 @@ module RTree
   , RTree(..)
   , totalBrLn
   , getLeaves
+  , toNewick
   ) where
 
 -- Branch lengths on trees are measured in Double.
@@ -75,3 +76,11 @@ getLeaves leaf = [leaf]
 
 -- myTree :: RTree Char Integer
 -- myTree = Node 'r' 1 myLeftLeaf 2 myRightLeaf
+
+toNewick :: RTree String BranchLn -> String
+toNewick t = toNewick' t ++ ";"
+  where
+    toNewick' (Leaf a) = a
+    toNewick' (Node _ lb lc rb rc) = "(" ++
+                                     toNewick' lc ++ ":" ++ show lb ++ "," ++
+                                     toNewick' rc ++ ":" ++ show rb ++ ")"

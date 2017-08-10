@@ -15,43 +15,66 @@ boundary mutation model. The output is a counts file.
 
 -}
 
+import qualified ArgParse                  as Args
 import qualified BndModel                  as BM
 import qualified BndState                  as BS
 import qualified CFWriter                  as CF
-import           Control.Monad.Random.Lazy
+import qualified Control.Monad.Random.Lazy as Rand
 import qualified DNAModel                  as DNA
 import qualified ExampleRTrees             as Trees
-import           Numeric.LinearAlgebra
+import qualified Numeric.LinearAlgebra     as LinAlg
+import qualified RTree                     as R
 import qualified Transition                as Trans
 
 -- TODO: Read in the simulation parameters such as tree type, mutation model
 -- with parameters, stationary distribution, heterozygosity, population size.
 
--- TODO: Properly output simulation parameters and command line and the seed
--- (everything needed to repeat simulations and to access all relevant
--- parameters).
-
--- TODO: Testing (Quicktest?).
+-- TODO: Allow manual seed.
 
 main :: IO ()
 main = do
-  print "Boundary mutation model simulator."
-  let stateFreqs      = vector [0.3, 0.2, 0.2, 0.3]
+  bmSimArgs <- Args.parseBMSimArgs
+  seed <- Rand.getStdGen
+  let stateFreqs      = LinAlg.vector [0.3, 0.2, 0.2, 0.3]
       popSize         = 9
       -- The heterozygosity value.
       heterozygosity  = 0.0025
       -- A kappa value of 6.25 corresponds to a transition to transversion ratio of 3.0
+      kappa           = 6.25
       mutationModel   = BM.normalizeToTheta hkyModel stateFreqs popSize heterozygosity
-        where hkyModel= DNA.rateMatrixHKY stateFreqs 6.25
+        where hkyModel= DNA.rateMatrixHKY stateFreqs kappa
       rateMatrix      = BM.rateMatrix mutationModel popSize
-      treeBrLn        = BM.scaleTreeToBMM popSize Trees.ilsTree1Ne
-      treeTransProb   = Trans.branchLengthsToTransitionProbs rateMatrix treeBrLn
+      treeSubs        = Trees.ilsTree1Ne
+      treeBM          = BM.scaleTreeToBMM popSize Trees.ilsTree1Ne
+      treeTransProb   = Trans.branchLengthsToTransitionProbs rateMatrix treeBM
       stationaryDist  = BM.stationaryDist mutationModel stateFreqs popSize
-      nSites          = 100000
-  print "The mutation model matrix is:"
-  print mutationModel
-  leafs <- evalRandIO (Trans.simulateNSites nSites stationaryDist treeTransProb)
+      nSites          = 10000
+  let leafs = Rand.evalRand (Trans.simulateNSites nSites stationaryDist treeTransProb) seed
   let popNames     = map fst $ head leafs
       dataAllSites = map (map (BS.idToBState popSize . snd)) leafs
-      fileName     = "Test.cf"
+      fileName     = Args.outFileName bmSimArgs
   CF.write fileName nSites popNames dataAllSites
+
+  -- Output.
+  putStrLn "Boundary mutation model simulator."
+  putStrLn "--"
+  putStr "Seed: "
+  print seed
+  putStr "Population size: "
+  print popSize
+  putStr "Heterozygosity: "
+  print heterozygosity
+  putStrLn "Mutation model matrix:"
+  print mutationModel
+  putStr "This corresponds to state frequencies (A, C, G, T): "
+  print stateFreqs
+  putStr "And a kappa value of: "
+  print kappa
+  putStr "Species tree in average number of substitutions: "
+  putStrLn $ R.toNewick treeSubs
+  putStr "Species tree in  mutations and frequency shifts: "
+  putStrLn $ R.toNewick treeBM
+  putStr "Number of simulated sites: "
+  print nSites
+  putStr "Output written to: "
+  print fileName
