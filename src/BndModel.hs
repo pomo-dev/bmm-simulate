@@ -22,8 +22,8 @@ import           BndState              (Allele, BState (..), PopSize, connected,
 import           DNAModel
 import           Numeric.LinearAlgebra
 import           RateMatrix
-import           Tools
 import           RTree
+import           Tools
 
 -- The boundary mutation models uses an underlying mutation model.
 type MutModel         = RateMatrix

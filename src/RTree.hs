@@ -45,7 +45,7 @@ instance Functor (RTree a) where
 -- The total branch length; only works when the branch lengths are numbers.
 totalBrLn :: RTree a BranchLn -> BranchLn
 totalBrLn (Leaf _) = 0
-totalBrLn t = lBrLn t  + rBrLn t
+totalBrLn t = lBrLn t + rBrLn t
                       + totalBrLn (lChld t)
                       + totalBrLn (rChld t)
 

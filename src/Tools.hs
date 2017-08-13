@@ -25,7 +25,7 @@ harmonic :: Int -> Double
 harmonic 1 = 1.0
 harmonic n = 1.0 / fromIntegral n + harmonic (n-1)
 
--- Separate a matrix into a symmetric and a skew-symmetric matrix.
+-- Separate a square matrix into a symmetric and a skew-symmetric matrix.
 matrixSeparateSymSkew :: Matrix R -> (Matrix R, Matrix R)
 matrixSeparateSymSkew m = (mSym, mSkew)
   where trM = tr m

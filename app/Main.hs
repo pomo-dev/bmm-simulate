@@ -26,6 +26,11 @@ import qualified Numeric.LinearAlgebra     as LinAlg
 import qualified RTree                     as R
 import qualified Transition                as Trans
 
+-- Automatic version information does not work with flycheck ... ahhhh.
+-- However, intero does not provide show warnings and so on.
+-- import           Paths_bmm_simulate        (version)
+-- import           Data.Version              (showVersion)
+
 -- TODO: Read in the simulation parameters such as tree type, mutation model
 -- with parameters, stationary distribution, heterozygosity, population size.
 
@@ -35,17 +40,20 @@ main :: IO ()
 main = do
   bmSimArgs <- Args.parseBMSimArgs
   seed <- Rand.getStdGen
-  let stateFreqs      = LinAlg.vector [0.3, 0.2, 0.2, 0.3]
+  let -- Specification of the boundary mutation model.
+      stateFreqs      = Args.stateFreqs bmSimArgs
       popSize         = 9
-      -- The heterozygosity value.
-      heterozygosity  = 0.0025
       -- A kappa value of 6.25 corresponds to a transition to transversion ratio of 3.0
       kappa           = 6.25
+      -- The heterozygosity value.
+      heterozygosity  = 0.0025
+      -- The tree height.
+      treeHeight      = 0.005
       mutationModel   = BM.normalizeToTheta hkyModel stateFreqs popSize heterozygosity
         where hkyModel= DNA.rateMatrixHKY stateFreqs kappa
       rateMatrix      = BM.rateMatrix mutationModel popSize
-      treeSubs        = Trees.ilsTree1Ne
-      treeBM          = BM.scaleTreeToBMM popSize Trees.ilsTree1Ne
+      treeSubs        = Trees.ilsTree treeHeight
+      treeBM          = BM.scaleTreeToBMM popSize treeSubs
       treeTransProb   = Trans.branchLengthsToTransitionProbs rateMatrix treeBM
       stationaryDist  = BM.stationaryDist mutationModel stateFreqs popSize
       nSites          = 10000
