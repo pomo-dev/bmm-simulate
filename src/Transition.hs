@@ -26,9 +26,9 @@ module Transition where
 -- I had problems with using =scanl= for vectors, a functions provided by
 -- Data.Vector (e.g., scanl1) with the vector type used and exported by hmatrix.
 -- The qualified imports solve this problems.
-import           Control.Monad.Random.Lazy
-import qualified Data.Vector.Generic       as V
-import qualified Numeric.LinearAlgebra     as L
+import           Control.Monad.Random.Strict
+import qualified Data.Vector.Generic         as V
+import qualified Numeric.LinearAlgebra       as L
 import           RateMatrix
 import           RTree
 

@@ -19,9 +19,11 @@ module ArgParse where
 import qualified Data.Attoparsec.Text  as A
 import           Data.Semigroup        ((<>))
 import qualified Data.Text             as T
+import qualified Defaults              as Def
 import qualified DNAModel              as DNA
 import qualified Numeric.LinearAlgebra as LinAlg
 import           Options.Applicative
+import qualified System.Random         as Rand
 
 -- Convenience function to read in more complicated command line options with
 -- attoparsec and optparse
@@ -30,8 +32,14 @@ attoReadM :: A.Parser a -> ReadM a
 attoReadM p = eitherReader (A.parseOnly p . T.pack)
 
 data BMSimArgs = BMSimArgs
-  { outFileName :: String
-  , stateFreqs  :: LinAlg.Vector LinAlg.R}
+  { outFileName    :: String
+  , stateFreqs     :: LinAlg.Vector LinAlg.R
+  , kappa          :: Double
+  , popSize        :: Int
+  , heterozygosity :: Double
+  , treeHeight     :: Double
+  , nSites         :: Int
+  , seed           :: String }
 
 -- General things and options.
 parseBMSimArgs :: IO BMSimArgs
@@ -44,8 +52,8 @@ outFileNameOpt :: Parser String
 outFileNameOpt = strOption
   ( long "output"
     <> short 'o'
-    <> metavar "FILE"
-    <> help "Write output to FILE (counts file format)")
+    <> metavar "FILENAME"
+    <> help "Write output to FILENAME (counts file format)")
 
 -- TODO: Define default values at the top (probably move all this to Main.hs).
 -- Option to input the stationary frequencies of the mutation model.
@@ -53,8 +61,9 @@ stateFreqsOpt :: Parser (LinAlg.Vector LinAlg.R)
 stateFreqsOpt = option (attoReadM parseStateFreq)
   ( long "freq"
     <> short 'f'
-    <> metavar "pi_A,pi_C,pi_G,pi_T]"
-    <> value (LinAlg.vector [0.3, 0.2, 0.2, 0.3])
+    <> metavar "pi_A,pi_C,pi_G,pi_T"
+    <> value Def.stateFreqs
+    <> showDefault
     <> help "Set the stationary frequencies of the nucleotides")
 
 -- Read a stationary frequency of the form `pi_A,pi_C,pi_G,...`.
@@ -64,12 +73,71 @@ parseStateFreq :: A.Parser DNA.StateFreqVec
 -- an applicative interface and not a monadic one. Also, allowing vectors of
 -- arbitrary size is undesirable because of meaningless error messages.
 parseStateFreq = do
-  f <- LinAlg.vector <$> take 4 <$> (A.sepBy A.double (A.char ','))
+  f <- LinAlg.vector . take 4 <$> A.sepBy A.double (A.char ',')
   if LinAlg.norm_1 f == 1.0 then return f
     else error $ "Stationary frequencies sum to " ++ show (LinAlg.norm_1 f) ++ " but should sum to 1.0."
+
+kappaOpt :: Parser Double
+kappaOpt = option auto
+  ( long "kappa"
+    <> short 'k'
+    <> metavar "VALUE"
+    <> value Def.kappa
+    <> showDefault
+    <> help "Set the kappa value for the HKY model" )
+
+popSizeOpt :: Parser Int
+popSizeOpt = option auto
+  ( short 'N'
+    <> metavar "VALUE"
+    <> value Def.popSize
+    <> showDefault
+    <> help "Set the virtual population size" )
+
+heterozygosityOpt :: Parser Double
+heterozygosityOpt = option auto
+  ( long "heterozygosity"
+    <> short 't'
+    <> metavar "VALUE"
+    <> value Def.heterozygosity
+    <> showDefault
+    <> help "Set the heterozygosity" )
+
+treeHeightOpt :: Parser Double
+treeHeightOpt = option auto
+  ( long "treeheight"
+    <> short 'h'
+    <> metavar "VALUE"
+    <> value Def.treeHeight
+    <> showDefault
+    <> help "Set the tree height [average number of substitutions]" )
+
+nSitesOpt :: Parser Int
+nSitesOpt = option auto
+  ( long "nsites"
+    <> short 'n'
+    <> metavar "VALUE"
+    <> value Def.nSites
+    <> showDefault
+    <> help "Set the number of sites to simulate" )
+
+seedOpt :: Parser String
+seedOpt = strOption
+  ( long "seed"
+    <> short 's'
+    <> metavar "VALUE"
+    <> value "random"
+    <> showDefault
+    <> help "Set the seed for the random number generator" )
 
 -- Composition of all options.
 bmSimOptions :: Parser BMSimArgs
 bmSimOptions = BMSimArgs
   <$> outFileNameOpt
   <*> stateFreqsOpt
+  <*> kappaOpt
+  <*> popSizeOpt
+  <*> heterozygosityOpt
+  <*> treeHeightOpt
+  <*> nSitesOpt
+  <*> seedOpt

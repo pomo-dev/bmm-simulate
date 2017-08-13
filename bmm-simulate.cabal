@@ -19,6 +19,7 @@ library
                      , CFWriter
                      , BndModel
                      , BndState
+                     , Defaults
                      , DNAModel
                      , ExampleRTrees
                      , RateMatrix
