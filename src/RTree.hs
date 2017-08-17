@@ -21,6 +21,7 @@ module RTree
   , totalBrLn
   , getLeaves
   , toNewick
+  , ilsTree
   ) where
 
 -- Branch lengths on trees are measured in Double.
@@ -84,3 +85,14 @@ toNewick t = toNewick' t ++ ";"
     toNewick' (Node _ lb lc rb rc) = "(" ++
                                      toNewick' lc ++ ":" ++ show lb ++ "," ++
                                      toNewick' rc ++ ":" ++ show rb ++ ")"
+
+-- The ILS tree with tree height `th`.
+-- Newick representation for height 1.0: (((s4:0.5,s3:0.5):0.1,s2:0.6):0.4,s1:1.0);.
+ilsTree :: Double -> RTree String Double
+ilsTree th = Node "root"
+             (th/2.0 - th/10.0) (Node "intern1"
+                                 0.1 (Node "intern2"
+                                      (th/2) (Leaf "s4")
+                                      (th/2) (Leaf "s3"))
+                                  (th/2.0 + th/10.0) (Leaf "s2"))
+             th (Leaf "s1")
