@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+stack exec bmm-simulate -- -o Profiling.cf +RTS -p -Sbmm-simulate.stat
+
+# Print which RTS options are available.
+# stack exec bmm-simulate -- -o Profiling.cf +RTS -?

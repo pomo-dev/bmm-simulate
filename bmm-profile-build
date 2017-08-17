@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+stack build --profile --executable-profiling --library-profiling
