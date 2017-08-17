@@ -13,10 +13,6 @@ a tree with states according to a stationary distribution, etc.
 
 The implementation of the Markov process is more than basic and can be improved in a lot of ways.
 
-Modules to look at:
-- Data.Distribution
-- Control.Monad.Trans.State.Lazy
-
 * Changelog
 
 -}
@@ -24,34 +20,34 @@ Modules to look at:
 module Transition where
 
 import           Control.Monad.Random.Strict
+import qualified Distribution                as D
 import qualified Numeric.LinearAlgebra       as L
-import           Rand
-import           RateMatrix
-import           RTree
+import qualified RateMatrix                  as RM
+import qualified RTree                       as Tree
 
 -- This may be moved to a different module ProbMatrix or alike.
 type ProbMatrix   = L.Matrix L.R
 
 -- The important matrix that gives the probabilities to move from one state to
 -- another in a specific time (branch length).
-probMatrix :: RateMatrix -> BranchLn -> ProbMatrix
+probMatrix :: RM.RateMatrix -> Tree.BranchLn -> ProbMatrix
 probMatrix m t = L.expm $ L.scale t m
 
 -- Convert a tree with branch lengths into a tree that has transition
 -- probability matrices assigned to each of its branches.
-branchLengthsToTransitionProbs :: RateMatrix -> RTree a Double -> RTree a ProbMatrix
+branchLengthsToTransitionProbs :: RM.RateMatrix -> Tree.RTree a Double -> Tree.RTree a ProbMatrix
 branchLengthsToTransitionProbs m = fmap (probMatrix m)
 
 -- Move from a given state to a new one according to a transition probability matrix.
-jump :: (RandomGen g) => State -> ProbMatrix -> Rand g State
-jump s p = drawFromDist (L.flatten $ p L.? [s])
+jump :: (RandomGen g) => RM.State -> ProbMatrix -> Rand g RM.State
+jump s p = D.drawFromDist (L.flatten $ p L.? [s])
 
 -- Perform N jumps from a given state and according to a transition probability
 -- matrix. This implementation uses `foldM` and I am not sure how to access or
 -- store the actual chain. This could be done by an equivalent of `scanl` for
 -- general monads, which I was unable to find. This function is neat, but will
 -- most likely not be needed. However, it is instructive and is left in place.
-jumpN :: (RandomGen g) => State -> ProbMatrix -> Int -> Rand g State
+jumpN :: (RandomGen g) => RM.State -> ProbMatrix -> Int -> Rand g RM.State
 jumpN s p n = foldM jump s (replicate n p)
 
 -- This is the heart of the simulation. Take a tree (most probably with node
@@ -62,9 +58,9 @@ jumpN s p n = foldM jump s (replicate n p)
 -- it lifts the append function of lists (++) to the `Rand g` monad. If we
 -- encounter a leaf, just return the node label (or whatever the type a is) and
 -- the state that we ended up at.
-populateAndFlattenTree :: (RandomGen g) => RTree a ProbMatrix -> State -> Rand g [(a, State)]
-populateAndFlattenTree (Leaf a) s = return [(a, s)]
-populateAndFlattenTree (Node _ lp lc rp rc) s = liftM2 (++) (jumpDownBranch lp lc) (jumpDownBranch rp rc)
+populateAndFlattenTree :: (RandomGen g) => Tree.RTree a ProbMatrix -> RM.State -> Rand g [(a, RM.State)]
+populateAndFlattenTree (Tree.Leaf a) s = return [(a, s)]
+populateAndFlattenTree (Tree.Node _ lp lc rp rc) s = liftM2 (++) (jumpDownBranch lp lc) (jumpDownBranch rp rc)
   where jumpDownBranch p t = jump s p >>= populateAndFlattenTree t
 
 -- Simulate data (states at the leaves) for a tree with transition probabilities
@@ -72,23 +68,23 @@ populateAndFlattenTree (Node _ lp lc rp rc) s = liftM2 (++) (jumpDownBranch lp l
 -- This function has to be impure because the state at the root is randomly
 -- chosen from the stationary distribution and the states at the nodes and
 -- leaves are randomly chosen according to the transition probabilities.
-simulateSite :: (RandomGen g) => StationaryDist -> RTree a ProbMatrix -> Rand g [(a, State)]
+simulateSite :: (RandomGen g) => RM.StationaryDist -> Tree.RTree a ProbMatrix -> Rand g [(a, RM.State)]
 simulateSite f t = do
-  rootState <- drawFromDist f
+  rootState <- D.drawFromDist f
   populateAndFlattenTree t rootState
 -- Short, but less verbose:
 -- simulateTree f t = drawFromDist f >>= populateAndFlattenTree t
 
 -- Simulate n sites.
-simulateNSites :: (RandomGen g) => Int -> StationaryDist -> RTree a ProbMatrix -> Rand g [[(a, State)]]
+simulateNSites :: (RandomGen g) => Int -> RM.StationaryDist -> Tree.RTree a ProbMatrix -> Rand g [[(a, RM.State)]]
 simulateNSites n f t = replicateM n $ simulateSite f t
 
 -- Randomly draw an index according to a given distribution. Use the stationary
 -- distribution and rooted tree at the drawn index to simulate a site. This is
 -- useful for simulation, e.g., Gamma rate heterogeneity models.
-simulateSiteDistr :: (RandomGen g) => Distribution -> [StationaryDist] -> [RTree a ProbMatrix] -> Rand g [(a, State)]
+simulateSiteDistr :: (RandomGen g) => D.Distribution -> [RM.StationaryDist] -> [Tree.RTree a ProbMatrix] -> Rand g [(a, RM.State)]
 simulateSiteDistr dist fs trs = do
-  i <- drawFromDist dist
+  i <- D.drawFromDist dist
   let f = fs  !! i
       t = trs !! i
   simulateSite f t

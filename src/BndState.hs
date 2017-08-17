@@ -19,24 +19,24 @@ module BndState
   ( Allele
   , PopSize
   , AlleleCount
-  , BState(..)
+  , State(..)
   , stateSpace
   , stateSpaceSize
-  , bStateId
-  , idToBState
+  , stateId
+  , idToState
   , connected
   ) where
 
 import           Data.List
-import           DNAModel
-import           RateMatrix
-import           Tools
+import qualified DNAModel   as DNA
+import qualified RateMatrix as RM
+import qualified Tools      as T
 
 -- First, we need to define the state space.
 
 -- Alleles are just nucleotides at the moment. However, I want to keep the code
 -- such that it can be extended easily to codons or amino acids.
-type Allele = Nuc
+type Allele = DNA.Nuc
 -- The population size; has to be larger than one, otherwise there be dragons.
 type PopSize = Int
 -- The absolute frequency of an allele.
@@ -48,20 +48,20 @@ nAlleles = 1 + fromEnum (maxBound :: Allele)
 
 -- A boundary mutation model state is either a boundary state or a polymorphic
 -- state. This also automatically defines a total order.
-data BState = Bnd { bndN :: PopSize
-                  , bndA :: Allele }
-            | Ply { plyN :: PopSize
-                  , plyI :: AlleleCount
-                  , plyA :: Allele
-                  , plyB :: Allele }
-             deriving (Eq, Read)
+data State = Bnd { bndN :: PopSize
+                 , bndA :: Allele }
+           | Ply { plyN :: PopSize
+                 , plyI :: AlleleCount
+                 , plyA :: Allele
+                 , plyB :: Allele }
+           deriving (Eq, Read)
 
-instance Show BState where
-  show (Bnd n a) =  foldl1 (++) $ intersperse "," $ map toCounts allValues
+instance Show State where
+  show (Bnd n a) =  foldl1 (++) $ intersperse "," $ map toCounts T.allValues
     where toCounts b
             | a == b    = show n
             | otherwise = "0"
-  show (Ply n i a b) = foldl1 (++) $ intersperse "," $ map toCounts allValues
+  show (Ply n i a b) = foldl1 (++) $ intersperse "," $ map toCounts T.allValues
     where toCounts c
             | c == a    = show i
             | c == b    = show (n-i)
@@ -73,7 +73,7 @@ instance Show BState where
 -- order (i.e., make a polymorphic state with higher allele count show up before
 -- a polymorphic state with lower allele count, this would move some polymorphic
 -- states closer to their respective boundaries),
-instance Ord BState where
+instance Ord State where
   Bnd {} <= Ply {}            = True
   Ply {} <= Bnd {}            = False
   s@(Bnd n a) <= t@(Bnd m b)
@@ -91,7 +91,7 @@ instance Ord BState where
     -- Now we can be sure that both nucleotides are the same.
     | otherwise               = i <= j
 
-validBState :: BState -> Bool
+validBState :: State -> Bool
 validBState (Bnd n _)
   | n <= 1    = False
   | otherwise = True
@@ -102,15 +102,15 @@ validBState (Ply n i a b)
   | i >= n    = False
   | otherwise = True
 
-filterValidBState :: [BState] -> [BState]
+filterValidBState :: [State] -> [State]
 filterValidBState = filter validBState
 
-getPopSize :: BState -> PopSize
+getPopSize :: State -> PopSize
 getPopSize (Bnd n _)     = n
 getPopSize (Ply n _ _ _) = n
 
 -- | Sorted list of all possible PoMo states for a specific population size.
-stateSpace :: PopSize -> [BState]
+stateSpace :: PopSize -> [State]
 stateSpace n
   | n <= 1    = error "The population size has to be larger than one."
   | otherwise = sort $ filterValidBState ( allBndStates ++ allPlyStates )
@@ -125,18 +125,18 @@ stateSpaceSize :: PopSize -> Int
 stateSpaceSize n = k + k*(k-1) `div` 2 * (n-1)
   where k = nAlleles
 
-bStateId :: BState -> Maybe Int
-bStateId s = elemIndex s (stateSpace $ getPopSize s)
+stateId :: State -> Maybe Int
+stateId s = elemIndex s (stateSpace $ getPopSize s)
 
-idToBState :: PopSize -> State -> BState
-idToBState n i = stateSpace n !! i
+idToState :: PopSize -> RM.State -> State
+idToState n i = stateSpace n !! i
 
 -- Check if two states are connected. By definition, states are NOT connected
 -- with themselves.
-connected :: BState -> BState -> Bool
+connected :: State -> State -> Bool
 connected s t = s `elem` getNeighbors t
 
-getNeighbors :: BState -> [BState]
+getNeighbors :: State -> [State]
 getNeighbors (Bnd n a) = filterValidBState allNeighbors
   where allNeighbors = [ Ply n (n-1) a b |
                          b <- [minBound .. maxBound] :: [Allele] ]

@@ -20,9 +20,8 @@ library
                      , BndModel
                      , BndState
                      , Defaults
+                     , Distribution
                      , DNAModel
-                     , ExampleRTrees
-                     , Rand
                      , RateMatrix
                      , RTree
                      , Tools
@@ -30,6 +29,7 @@ library
   build-depends:       MonadRandom >= 0.5.1
                      , attoparsec >= 0.13.1.0
                      , base >= 4.7 && < 5
+                     , distribution >= 1.1.1.0
                      , hmatrix >= 0.18.0.0
                      , optparse-applicative >= 0.13.2.0
                      , random >= 1.1
@@ -47,6 +47,7 @@ executable bmm-simulate
                      , attoparsec >= 0.13.1.0
                      , base
                      , bmm-simulate
+                     , distribution >= 1.1.1.0
                      , hmatrix >= 0.18.0.0
                      , optparse-applicative >= 0.13.2.0
                      , random >= 1.1
@@ -64,6 +65,7 @@ test-suite bmm-simulate-test
                      , attoparsec >= 0.13.1.0
                      , base
                      , bmm-simulate
+                     , distribution >= 1.1.1.0
                      , hmatrix >= 0.18.0.0
                      , optparse-applicative >= 0.13.2.0
                      , random >= 1.1

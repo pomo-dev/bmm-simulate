@@ -21,9 +21,11 @@ import qualified BndState                    as BS
 import qualified CFWriter                    as CF
 import qualified Control.Monad.Random.Strict as Rand
 import qualified DNAModel                    as DNA
-import qualified ExampleRTrees               as Trees
-import qualified RTree                       as R
+import qualified RTree                       as Tree
+import qualified System.Environment          as Sys
 import qualified Transition                  as Trans
+
+import qualified Numeric.LinearAlgebra as L
 
 -- Automatic version information does not work with flycheck ... ahhhh.
 -- However, intero does not provide show warnings and so on.
@@ -34,6 +36,8 @@ import qualified Transition                  as Trans
 
 main :: IO ()
 main = do
+  progName <- Sys.getProgName
+  args <- Sys.getArgs
   bmSimArgs <- Args.parseBMSimArgs
   let seedArg = Args.seed bmSimArgs
   -- This is super complicated. Is there an easier way?
@@ -52,7 +56,7 @@ main = do
         hkyModel stateFreqs popSize heterozygosity
         where hkyModel = DNA.rateMatrixHKY stateFreqs kappa
       rateMatrix      = BM.rateMatrix mutationModel popSize
-      treeSubs        = Trees.ilsTree treeHeight
+      treeSubs        = Tree.ilsTree treeHeight
       treeBM          = BM.scaleTreeToBMM popSize treeSubs
       treeTransProb   = Trans.branchLengthsToTransitionProbs rateMatrix treeBM
       stationaryDist  = BM.stationaryDist mutationModel stateFreqs popSize
@@ -60,16 +64,31 @@ main = do
       leafs           = Rand.evalRand transition generator
         where transition = Trans.simulateNSites nSites stationaryDist treeTransProb
       popNames     = map fst $ head leafs
-      dataAllSites = map (map (BS.idToBState popSize . snd)) leafs
+      dataAllSites = map (map (BS.idToState popSize . snd)) leafs
       fileName     = Args.outFileName bmSimArgs
   CF.write fileName nSites popNames dataAllSites
 
+  print $ L.norm_1 stationaryDist
+
   -- Output.
   putStrLn "Boundary mutation model simulator version 0.1.0.0."
+  putStr "Command line: "
+  putStrLn $ progName ++ " " ++ unwords args
+
+  putStrLn ""
   putStrLn "--"
+  putStrLn "General options."
   putStrLn $ "Seed: " ++ seedArg
   putStr "Generator: "
   print generator
+  putStr "Number of simulated sites: "
+  print nSites
+  putStr "Output written to: "
+  print fileName
+
+  putStrLn ""
+  putStrLn "--"
+  putStrLn "Boundary mutation model options."
   putStr "Population size: "
   print popSize
   putStr "Heterozygosity: "
@@ -80,11 +99,11 @@ main = do
   print stateFreqs
   putStr "And a kappa value of: "
   print kappa
+
+  putStrLn ""
+  putStrLn "--"
+  putStrLn "Tree options."
   putStr "Species tree in average number of substitutions: "
-  putStrLn $ R.toNewick treeSubs
+  putStrLn $ Tree.toNewick treeSubs
   putStr "Species tree in  mutations and frequency shifts: "
-  putStrLn $ R.toNewick treeBM
-  putStr "Number of simulated sites: "
-  print nSites
-  putStr "Output written to: "
-  print fileName
+  putStrLn $ Tree.toNewick treeBM

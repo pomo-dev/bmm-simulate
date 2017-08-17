@@ -4,3 +4,4 @@ dist/*
 /data/*
 bmm-simulate.prof*
 bmm-simulate.stat*
+*.cf

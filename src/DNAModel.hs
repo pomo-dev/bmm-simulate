@@ -19,17 +19,17 @@ the boundary mutation model.
 module DNAModel
   where
 
-import Numeric.LinearAlgebra
-import RateMatrix
+import           Numeric.LinearAlgebra
+import qualified RateMatrix            as RM
 
 -- The nucleotides.
 data Nuc = A | C | G | T deriving (Eq, Show, Read, Ord, Bounded, Enum)
 
 -- A rate matrix of a DNA models is called DNAModel.
-type DNAModel      = RateMatrix
+type DNAModel      = RM.RateMatrix
 -- A stationary distribution of a DNA model is also called stationary frequency
 -- vector.
-type StateFreqVec  = StationaryDist
+type StateFreqVec  = RM.StationaryDist
 
 -- The HKY model.
 type Kappa = Double
@@ -42,5 +42,5 @@ exchangeabilityMatrixHKY k = (4><4)
   , 1.0,   k, 1.0, 0.0 ]
 -- HKY model mutation matrix normalized so that one mutation happens per unit time.
 rateMatrixHKY :: StateFreqVec -> Kappa -> DNAModel
-rateMatrixHKY f k = normalizeRates f $ setDiagonal $ exch <> diag f
+rateMatrixHKY f k = RM.normalizeRates f $ RM.setDiagonal $ exch <> diag f
   where exch = exchangeabilityMatrixHKY k

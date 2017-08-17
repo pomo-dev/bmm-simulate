@@ -17,12 +17,16 @@ Default values and constants.
 module Defaults where
 
 import qualified DNAModel              as DNA
-import qualified Numeric.LinearAlgebra as LinAlg
+import           Numeric.LinearAlgebra
 import qualified System.Random         as Rand
+
+-- Output file name.
+outFileName :: String
+outFileName = "Test.cf"
 
 -- Stationary distribution of the mutation model (or stationary frequencies).
 stateFreqs :: DNA.StateFreqVec
-stateFreqs = LinAlg.vector [0.3, 0.2, 0.2, 0.3]
+stateFreqs = vector [0.3, 0.2, 0.2, 0.3]
 
 -- Virtual population size.
 popSize :: Int

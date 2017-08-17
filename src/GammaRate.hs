@@ -17,8 +17,15 @@ Gamma rate heterogeneity. This module provides the necessary definitions.
 
 module GammaRate where
 
-import Rand
-import Statistics
+-- import qualified Distribution                  as D
+import           Statistics.Distribution
+import           Statistics.Distribution.Gamma
 
--- divideDist :: ContDist -> Distribution
--- getGammaRates :: Int -> 
+-- | For a given number of rate categories 'n' and a shape parameter 'alpha'
+-- (the rate or scale is set such that the mean is 1.0), return a list of rates
+-- that represent the respective categories. Use the mean rate for each
+-- category.
+getGammaRatesMean :: Int -> Double -> [Double]
+getGammaRatesMean n alpha = quantiles
+  where gamma = gammaDistr alpha (1.0/alpha)
+        quantiles = [ quantile gamma (fromIntegral i / fromIntegral n) | i <- [0..n] ]

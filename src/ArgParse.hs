@@ -21,9 +21,8 @@ import           Data.Semigroup        ((<>))
 import qualified Data.Text             as T
 import qualified Defaults              as Def
 import qualified DNAModel              as DNA
-import qualified Numeric.LinearAlgebra as LinAlg
+import qualified Numeric.LinearAlgebra as L
 import           Options.Applicative
-import qualified System.Random         as Rand
 
 -- Convenience function to read in more complicated command line options with
 -- attoparsec and optparse
@@ -33,7 +32,7 @@ attoReadM p = eitherReader (A.parseOnly p . T.pack)
 
 data BMSimArgs = BMSimArgs
   { outFileName    :: String
-  , stateFreqs     :: LinAlg.Vector LinAlg.R
+  , stateFreqs     :: L.Vector L.R
   , kappa          :: Double
   , popSize        :: Int
   , heterozygosity :: Double
@@ -53,11 +52,13 @@ outFileNameOpt = strOption
   ( long "output"
     <> short 'o'
     <> metavar "FILENAME"
+    <> value Def.outFileName
+    <> showDefault
     <> help "Write output to FILENAME (counts file format)")
 
 -- TODO: Define default values at the top (probably move all this to Main.hs).
 -- Option to input the stationary frequencies of the mutation model.
-stateFreqsOpt :: Parser (LinAlg.Vector LinAlg.R)
+stateFreqsOpt :: Parser (L.Vector L.R)
 stateFreqsOpt = option (attoReadM parseStateFreq)
   ( long "freq"
     <> short 'f'
@@ -69,9 +70,9 @@ stateFreqsOpt = option (attoReadM parseStateFreq)
 -- Read a stationary frequency of the form `pi_A,pi_C,pi_G,...`.
 parseStateFreq :: A.Parser DNA.StateFreqVec
 parseStateFreq = do
-  f <- LinAlg.vector . take nAlleles <$> A.sepBy A.double (A.char ',')
-  if LinAlg.norm_1 f == 1.0 then return f
-    else error $ "Stationary frequencies sum to " ++ show (LinAlg.norm_1 f) ++ " but should sum to 1.0."
+  f <- L.vector . take nAlleles <$> A.sepBy A.double (A.char ',')
+  if L.norm_1 f == 1.0 then return f
+    else error $ "Stationary frequencies sum to " ++ show (L.norm_1 f) ++ " but should sum to 1.0."
     -- TODO: Nucleotide count hard coded. See `BndState.nAlleles`. However, I cannot
     -- take different numbers depending on the mutation model because optparse has
     -- an applicative interface and not a monadic one. Also, allowing vectors of

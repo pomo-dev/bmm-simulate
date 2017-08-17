@@ -17,8 +17,8 @@ size, etc.), write the data to file using counts file format.
 
 module CFWriter where
 
-import BndState
-import System.IO
+import           BndState  as BS
+import           System.IO
 
 -- The number of populations (leafs) on the tree.
 type NPop = Int
@@ -29,9 +29,9 @@ type NSites = Int
 -- The names of the populations.
 type PopulationNames = [String]
 
--- Write a header file.
-getHeader :: NSites -> PopulationNames -> String
-getHeader nSites popNames = lineOne ++ "\n" ++ lineTwo ++ "\n"
+-- | Compose the header using the number of sites and the population names.
+header :: NSites -> PopulationNames -> String
+header nSites popNames = lineOne ++ "\n" ++ lineTwo ++ "\n"
   where nPop = length popNames
         lineOne = "COUNTSFILE NPOP " ++ show nPop ++ " NSITES " ++ show nSites
         lineTwo = "CHROM POS " ++ unwords popNames
@@ -43,7 +43,7 @@ type Chrom = String
 type Pos   = Int
 
 -- The set of boundary states for one site.
-type DataOneSite = [BState]
+type DataOneSite = [BS.State]
 
 -- Get a data line in the counts file.
 getDataLine :: Chrom -> Pos -> DataOneSite -> String
@@ -59,7 +59,7 @@ type DataAllSites = [DataOneSite]
 write :: FilePath -> NSites -> PopulationNames -> DataAllSites -> IO ()
 write fileName nSites popNames bStatesArray = do
   handle <- openFile fileName WriteMode
-  hPutStr handle $ getHeader nSites popNames
+  hPutStr handle $ header nSites popNames
   let dataLines = zipWith (getDataLine "SIM") [1..] bStatesArray
   mapM_ (hPutStr handle) dataLines
   hClose handle
