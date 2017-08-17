@@ -23,12 +23,9 @@ Modules to look at:
 
 module Transition where
 
--- I had problems with using =scanl= for vectors, a functions provided by
--- Data.Vector (e.g., scanl1) with the vector type used and exported by hmatrix.
--- The qualified imports solve this problems.
 import           Control.Monad.Random.Strict
-import qualified Data.Vector.Generic         as V
 import qualified Numeric.LinearAlgebra       as L
+import           Rand
 import           RateMatrix
 import           RTree
 
@@ -44,27 +41,6 @@ probMatrix m t = L.expm $ L.scale t m
 -- probability matrices assigned to each of its branches.
 branchLengthsToTransitionProbs :: RateMatrix -> RTree a Double -> RTree a ProbMatrix
 branchLengthsToTransitionProbs m = fmap (probMatrix m)
-
--- A discrete distribution is a real vector.
-type Distribution = L.Vector L.R
-
--- Randomly sample a state (index) from a discrete probability distribution.
-drawFromDist :: (RandomGen g) => Distribution -> Rand g State
-drawFromDist dist = do
-  p <- getRandomR (0.0 :: Double, 1.0 :: Double)
-  return $ fromDist p dist
-
--- A probability is just a double, an index is just an Int.
-type Probability             = Double
-
--- For a given probability, return the index of the sample according to a
--- distribution. In Control.Monad.Trans.Random.Lazy, this is implemented for
--- lists, but I happen to use vectors in this program, so I had to rewrite this
--- function.
-fromDist :: Probability -> Distribution -> State
-fromDist p dist = V.length $ V.takeWhile (<p) cums
-  -- The cumulative distribution.
-  where cums = V.scanl1 (+) dist
 
 -- Move from a given state to a new one according to a transition probability matrix.
 jump :: (RandomGen g) => State -> ProbMatrix -> Rand g State
@@ -106,3 +82,13 @@ simulateSite f t = do
 -- Simulate n sites.
 simulateNSites :: (RandomGen g) => Int -> StationaryDist -> RTree a ProbMatrix -> Rand g [[(a, State)]]
 simulateNSites n f t = replicateM n $ simulateSite f t
+
+-- Randomly draw an index according to a given distribution. Use the stationary
+-- distribution and rooted tree at the drawn index to simulate a site. This is
+-- useful for simulation, e.g., Gamma rate heterogeneity models.
+simulateSiteDistr :: (RandomGen g) => Distribution -> [StationaryDist] -> [RTree a ProbMatrix] -> Rand g [(a, State)]
+simulateSiteDistr dist fs trs = do
+  i <- drawFromDist dist
+  let f = fs  !! i
+      t = trs !! i
+  simulateSite f t

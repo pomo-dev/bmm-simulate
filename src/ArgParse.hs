@@ -68,14 +68,15 @@ stateFreqsOpt = option (attoReadM parseStateFreq)
 
 -- Read a stationary frequency of the form `pi_A,pi_C,pi_G,...`.
 parseStateFreq :: A.Parser DNA.StateFreqVec
--- TODO: Nucleotide count hard coded. See `BndState.nAlleles`. However, I cannot
--- take different numbers depending on the mutation model because optparse has
--- an applicative interface and not a monadic one. Also, allowing vectors of
--- arbitrary size is undesirable because of meaningless error messages.
 parseStateFreq = do
-  f <- LinAlg.vector . take 4 <$> A.sepBy A.double (A.char ',')
+  f <- LinAlg.vector . take nAlleles <$> A.sepBy A.double (A.char ',')
   if LinAlg.norm_1 f == 1.0 then return f
     else error $ "Stationary frequencies sum to " ++ show (LinAlg.norm_1 f) ++ " but should sum to 1.0."
+    -- TODO: Nucleotide count hard coded. See `BndState.nAlleles`. However, I cannot
+    -- take different numbers depending on the mutation model because optparse has
+    -- an applicative interface and not a monadic one. Also, allowing vectors of
+    -- arbitrary size is undesirable because of meaningless error messages.
+    where nAlleles = 4
 
 kappaOpt :: Parser Double
 kappaOpt = option auto
