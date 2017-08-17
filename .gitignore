@@ -2,3 +2,5 @@ TAGS
 .stack-work/*
 dist/*
 /data/*
+bmm-simulate.prof*
+bmm-simulate.stat*
