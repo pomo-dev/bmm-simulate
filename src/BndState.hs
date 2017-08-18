@@ -57,11 +57,11 @@ data State = Bnd { bndN :: PopSize
            deriving (Eq, Read)
 
 instance Show State where
-  show (Bnd n a) =  foldl1 (++) $ intersperse "," $ map toCounts T.allValues
+  show (Bnd n a) =  foldl1' (++) $ intersperse "," $ map toCounts T.allValues
     where toCounts b
             | a == b    = show n
             | otherwise = "0"
-  show (Ply n i a b) = foldl1 (++) $ intersperse "," $ map toCounts T.allValues
+  show (Ply n i a b) = foldl1' (++) $ intersperse "," $ map toCounts T.allValues
     where toCounts c
             | c == a    = show i
             | c == b    = show (n-i)
