@@ -32,7 +32,8 @@ type ProbMatrix   = L.Matrix L.R
 -- The important matrix that gives the probabilities to move from one state to
 -- another in a specific time (branch length).
 probMatrix :: RM.RateMatrix -> Tree.BranchLn -> ProbMatrix
-probMatrix m t = L.expm $ L.scale t m
+probMatrix m t = exponential
+  where !exponential = L.expm $ L.scale t m
 
 -- Convert a tree with branch lengths into a tree that has transition
 -- probability matrices assigned to each of its branches.
@@ -88,21 +89,19 @@ stationaryDistToGenerator f = fG
         !fG = D.fromDistribution fD
 
 treeProbMatrixToTreeGenerator :: Tree.RTree a ProbMatrix -> Tree.RTree a [D.Generator RM.State]
-treeProbMatrixToTreeGenerator t =
-  let
+treeProbMatrixToTreeGenerator t = tG
+  where
     -- Create a tree with the probability matrices as list of row vectors.
     !tL = fmap L.toLists t
     -- A complicated double map. We need to create generators for each branch on
     -- the tree (fmap) and for each target state on each branch (map).
     !tG = (fmap . map) (D.fromDistribution . D.fromList . zip ([0..] :: [RM.State])) tL
-  in
-    tG
 
 -- Simulate n sites.
 simulateNSites :: (RandomGen g) => Int -> RM.StationaryDist -> Tree.RTree a ProbMatrix -> Rand g [[(a, RM.State)]]
-simulateNSites n f t = replicateM n site
+simulateNSites n f t = replicateM n simOneSite
   where !fG = stationaryDistToGenerator f
-        !site = simulateSite fG (treeProbMatrixToTreeGenerator t)
+        !simOneSite = simulateSite fG (treeProbMatrixToTreeGenerator t)
 
 -- Randomly draw an index according to a given generator. Use the stationary
 -- distribution and rooted tree at the drawn index to simulate a site. This is
@@ -113,9 +112,9 @@ simulateSiteGen :: (RandomGen g) =>
                 -> [Tree.RTree a [D.Generator RM.State]]
                 -> Rand g [(a, RM.State)]
 simulateSiteGen gen fs trs = do
-  i <- D.getSample gen
-  let f = fs  !! i
-      t = trs !! i
+  !i <- D.getSample gen
+  let !f = fs  !! i
+      !t = trs !! i
   simulateSite f t
 
 -- Simulate n sites. For a given distribution, draw random indices. Use the
@@ -127,9 +126,7 @@ simulateNSitesDistr :: (RandomGen g) =>
                     -> [RM.StationaryDist]
                     -> [Tree.RTree a ProbMatrix]
                     -> Rand g [[(a, RM.State)]]
-simulateNSitesDistr n d fs trs =
-  let !dG = D.fromDistribution d
-      !fGs = map stationaryDistToGenerator fs
-      !site = simulateSiteGen dG fGs (map treeProbMatrixToTreeGenerator trs)
-  in
-    replicateM n site
+simulateNSitesDistr n d fs trs = replicateM n simOneSite
+  where !dG         = D.fromDistribution d
+        !fGs        = map stationaryDistToGenerator fs
+        !simOneSite = simulateSiteGen dG fGs (map treeProbMatrixToTreeGenerator trs)
