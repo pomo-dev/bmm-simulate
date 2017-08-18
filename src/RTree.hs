@@ -91,8 +91,8 @@ toNewick t = toNewick' t ++ ";"
 ilsTree :: Double -> RTree String Double
 ilsTree th = Node "root"
              (th/2.0 - th/10.0) (Node "intern1"
-                                 0.1 (Node "intern2"
-                                      (th/2) (Leaf "s4")
-                                      (th/2) (Leaf "s3"))
-                                  (th/2.0 + th/10.0) (Leaf "s2"))
+                                 (th/10.0) (Node "intern2"
+                                            (th/2) (Leaf "s4")
+                                            (th/2) (Leaf "s3"))
+                                 (th/2.0 + th/10.0) (Leaf "s2"))
              th (Leaf "s1")

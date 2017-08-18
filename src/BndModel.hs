@@ -71,6 +71,11 @@ rateMatrix :: MutModel -> BS.PopSize -> BndMutModel
 rateMatrix m n = RM.setDiagonal $ build (s,s) (rateByDouble m n)
   where s = BS.stateSpaceSize n
 
+normalizedRateMatrix :: MutModel -> DNA.StateFreqVec -> BS.PopSize -> BndMutModel
+normalizedRateMatrix m f n = RM.normalizeRates f' m'
+  where m' = rateMatrix m n
+        f' = stationaryDist m f n
+
 -- Define a heterozygosity to make function definitions clearer.
 type Heterozygosity = Double
 

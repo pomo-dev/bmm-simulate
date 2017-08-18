@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-stack exec bmm-simulate -- -n 500000 +RTS -p -Sbmm-simulate.stat
+stack exec bmm-simulate -- -n 100000 +RTS -xc
 
 # Print which RTS options are available.
 # stack exec bmm-simulate -- +RTS -?
