@@ -68,8 +68,6 @@ main = do
       fileName     = Args.outFileName bmSimArgs
   CF.write fileName nSites popNames dataAllSites
 
-  print $ L.norm_1 stationaryDist
-
   -- Output.
   putStrLn "Boundary mutation model simulator version 0.1.0.0."
   putStr "Command line: "
