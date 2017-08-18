@@ -5,4 +5,6 @@ dist/*
 bmm-simulate.prof*
 bmm-simulate.stat*
 bmm-simulate.hp*
+bmm-simulate.ps*
+bmm-simulate.aux*
 *.cf
