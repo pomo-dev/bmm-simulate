@@ -47,25 +47,34 @@ main = do
       Rand.getStdGen
     else
     return $ Rand.mkStdGen (read seedArg :: Int)
-  let stateFreqs      = Args.stateFreqs bmSimArgs
-      popSize         = Args.popSize bmSimArgs
-      kappa           = Args.kappa bmSimArgs
-      heterozygosity  = Args.heterozygosity bmSimArgs
-      treeHeight      = Args.treeHeight bmSimArgs
-      mutationModel   = BM.normalizeToTheta
+  -- Mutation model.
+  let stateFreqs = Args.stateFreqs bmSimArgs
+      kappa      = Args.kappa bmSimArgs
+      hkyModel   = DNA.rateMatrixHKY stateFreqs kappa
+  -- Boundary mutation model.
+  let popSize          = Args.popSize bmSimArgs
+      heterozygosity   = Args.heterozygosity bmSimArgs
+      mutationModel    = BM.normalizeToTheta
         hkyModel stateFreqs popSize heterozygosity
-        where hkyModel = DNA.rateMatrixHKY stateFreqs kappa
-      bmRateMatrix      = BM.normalizedRateMatrix mutationModel stateFreqs popSize
-      bmStationaryDist  = BM.stationaryDist mutationModel stateFreqs popSize
-      treeSubs        = Tree.ilsTree treeHeight
-      treeBM          = BM.scaleTreeToBMM popSize treeSubs
-      treeTransProb   = Trans.branchLengthsToTransitionProbs bmRateMatrix treeBM
-      nSites          = Args.nSites bmSimArgs
-      leafs           = Rand.evalRand transition generator
+      bmRateMatrix     = BM.normalizedRateMatrix mutationModel stateFreqs popSize
+      bmStationaryDist = BM.stationaryDist mutationModel stateFreqs popSize
+  -- Tree.
+  let treeHeight    = Args.treeHeight bmSimArgs
+      treeSubs      = Tree.ilsTree treeHeight
+      treeBM        = BM.scaleTreeToBMM popSize treeSubs
+      treeTransProb = Trans.branchLengthsToTransitionProbs bmRateMatrix treeBM
+  -- Other options.
+  let nSites = Args.nSites bmSimArgs
+  -- Simulation.
+  let leafs        = Rand.evalRand transition generator
         where transition = Trans.simulateNSites nSites bmStationaryDist treeTransProb
       popNames     = map fst $ head leafs
       dataAllSites = map (map (BS.idToState popSize . snd)) leafs
       fileName     = Args.outFileName bmSimArgs
+  -- TODO: Gathering all data in a single vector needs a LOT OF MEMORY. It is
+  -- better, to write the file line by line (during the simulation). I.e., get
+  -- rid of Trans.simulateNSites and provide functions that prepare the
+  -- generators as well as functions that simulate and write one site at a time.
   CF.write fileName nSites popNames dataAllSites
 
   -- Output.
