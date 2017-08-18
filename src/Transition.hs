@@ -20,7 +20,7 @@ The implementation of the Markov process is more than basic and can be improved 
 module Transition where
 
 import           Control.Monad.Random.Strict
-import qualified Distribution                as D
+import qualified Data.Distribution           as D
 import qualified Numeric.LinearAlgebra       as L
 import qualified RateMatrix                  as RM
 import qualified RTree                       as Tree
@@ -38,16 +38,20 @@ probMatrix m t = L.expm $ L.scale t m
 branchLengthsToTransitionProbs :: RM.RateMatrix -> Tree.RTree a Double -> Tree.RTree a ProbMatrix
 branchLengthsToTransitionProbs m = fmap (probMatrix m)
 
--- Move from a given state to a new one according to a transition probability matrix.
-jump :: (RandomGen g) => RM.State -> ProbMatrix -> Rand g RM.State
-jump s p = D.drawFromDist (L.flatten $ p L.? [s])
+-- Move from a given state to a new one according to a transition probability
+-- matrix (for performance reasons this probability matrix needs to be given as
+-- a list of generators, see
+-- https://hackage.haskell.org/package/distribution-1.1.0.0/docs/Data-Distribution-Sample.html).
+jump :: (RandomGen g) => RM.State -> [D.Generator RM.State] -> Rand g RM.State
+jump s p = D.getSample $ p !! s
 
 -- Perform N jumps from a given state and according to a transition probability
--- matrix. This implementation uses `foldM` and I am not sure how to access or
--- store the actual chain. This could be done by an equivalent of `scanl` for
--- general monads, which I was unable to find. This function is neat, but will
--- most likely not be needed. However, it is instructive and is left in place.
-jumpN :: (RandomGen g) => RM.State -> ProbMatrix -> Int -> Rand g RM.State
+-- matrix transformed to a list of generators. This implementation uses `foldM`
+-- and I am not sure how to access or store the actual chain. This could be done
+-- by an equivalent of `scanl` for general monads, which I was unable to find.
+-- This function is neat, but will most likely not be needed. However, it is
+-- instructive and is left in place.
+jumpN :: (RandomGen g) => RM.State -> [D.Generator RM.State] -> Int -> Rand g RM.State
 jumpN s p n = foldM jump s (replicate n p)
 
 -- This is the heart of the simulation. Take a tree (most probably with node
@@ -58,7 +62,7 @@ jumpN s p n = foldM jump s (replicate n p)
 -- it lifts the append function of lists (++) to the `Rand g` monad. If we
 -- encounter a leaf, just return the node label (or whatever the type a is) and
 -- the state that we ended up at.
-populateAndFlattenTree :: (RandomGen g) => Tree.RTree a ProbMatrix -> RM.State -> Rand g [(a, RM.State)]
+populateAndFlattenTree :: (RandomGen g) => Tree.RTree a [D.Generator RM.State] -> RM.State -> Rand g [(a, RM.State)]
 populateAndFlattenTree (Tree.Leaf a) s = return [(a, s)]
 populateAndFlattenTree (Tree.Node _ lp lc rp rc) s = liftM2 (++) (jumpDownBranch lp lc) (jumpDownBranch rp rc)
   where jumpDownBranch p t = jump s p >>= populateAndFlattenTree t
@@ -68,23 +72,60 @@ populateAndFlattenTree (Tree.Node _ lp lc rp rc) s = liftM2 (++) (jumpDownBranch
 -- This function has to be impure because the state at the root is randomly
 -- chosen from the stationary distribution and the states at the nodes and
 -- leaves are randomly chosen according to the transition probabilities.
-simulateSite :: (RandomGen g) => RM.StationaryDist -> Tree.RTree a ProbMatrix -> Rand g [(a, RM.State)]
+simulateSite :: (RandomGen g) => D.Generator RM.State -> Tree.RTree a [D.Generator RM.State] -> Rand g [(a, RM.State)]
 simulateSite f t = do
-  rootState <- D.drawFromDist f
+  rootState <- D.getSample f
   populateAndFlattenTree t rootState
--- Short, but less verbose:
--- simulateTree f t = drawFromDist f >>= populateAndFlattenTree t
+
+stationaryDistToGenerator :: RM.StationaryDist -> D.Generator RM.State
+stationaryDistToGenerator f = fG
+  -- TODO: This is a little complicated. I need to convert the vector to a list
+  -- to be able to create a distribution.
+  where fL = L.toList f
+        fD = D.fromList $ zip [0..] fL
+        fG = D.fromDistribution fD
+
+treeProbMatrixToTreeGenerator :: Tree.RTree a ProbMatrix -> Tree.RTree a [D.Generator RM.State]
+treeProbMatrixToTreeGenerator t =
+  let
+    -- Create a tree with the probability matrices as list of row vectors.
+    tL = fmap L.toLists t
+    -- A complicated double map. We need to create generators for each branch on
+    -- the tree (fmap) and for each target state on each branch (map).
+    tG = (fmap . map) (D.fromDistribution . D.fromList . zip ([0..] :: [RM.State])) tL
+  in
+    tG
 
 -- Simulate n sites.
 simulateNSites :: (RandomGen g) => Int -> RM.StationaryDist -> Tree.RTree a ProbMatrix -> Rand g [[(a, RM.State)]]
-simulateNSites n f t = replicateM n $ simulateSite f t
+simulateNSites n f t = replicateM n $ simulateSite fG (treeProbMatrixToTreeGenerator t)
+  where fG = stationaryDistToGenerator f
 
--- Randomly draw an index according to a given distribution. Use the stationary
+-- Randomly draw an index according to a given generator. Use the stationary
 -- distribution and rooted tree at the drawn index to simulate a site. This is
 -- useful for simulation, e.g., Gamma rate heterogeneity models.
-simulateSiteDistr :: (RandomGen g) => D.Distribution -> [RM.StationaryDist] -> [Tree.RTree a ProbMatrix] -> Rand g [(a, RM.State)]
-simulateSiteDistr dist fs trs = do
-  i <- D.drawFromDist dist
+simulateSiteGen :: (RandomGen g) =>
+                   D.Generator Int
+                -> [D.Generator RM.State]
+                -> [Tree.RTree a [D.Generator RM.State]]
+                -> Rand g [(a, RM.State)]
+simulateSiteGen gen fs trs = do
+  i <- D.getSample gen
   let f = fs  !! i
       t = trs !! i
   simulateSite f t
+
+-- Simulate n sites. For a given distribution, draw random indices. Use the
+-- stationary distribution and rooted tree at the drawn index to simulate a
+-- site. This is useful for simulation, e.g., Gamma rate heterogeneity models.
+simulateNSitesDistr :: (RandomGen g) =>
+                       Int
+                    -> D.Distribution Int
+                    -> [RM.StationaryDist]
+                    -> [Tree.RTree a ProbMatrix]
+                    -> Rand g [[(a, RM.State)]]
+simulateNSitesDistr n d fs trs =
+  let dG = D.fromDistribution d
+      fGs = map stationaryDistToGenerator fs
+  in
+    replicateM n $ simulateSiteGen dG fGs (map treeProbMatrixToTreeGenerator trs)
