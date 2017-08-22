@@ -40,13 +40,16 @@ data BMSimArgs = BMSimArgs
   , nSites         :: Int
   , seed           :: String }
 
--- General things and options.
+-- The impure IO action that reads the arguments and prints out help if needed.
+-- Maybe put this into Main.hs?
 parseBMSimArgs :: IO BMSimArgs
 parseBMSimArgs = execParser $ info (helper <*> bmSimOptions)
   ( fullDesc
     <> progDesc "Simulate count files using the boundary mutation model."
     <> header "Boundary mutation model simulator")
 
+
+-- General things and options.
 outFileNameOpt :: Parser String
 outFileNameOpt = strOption
   ( long "output"

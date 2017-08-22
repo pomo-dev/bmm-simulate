@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
 # Run the program with profiling support, additional statistics and memory heap profile.
-stack exec bmm-simulate -- -n 500000 +RTS -p -Sbmm-simulate.stat -hc
+# -hc break memory types up into functions
+stack exec bmm-simulate -- -s 1 -n 500000 +RTS -p -Sbmm-simulate.stat -h
 
 # Create a graph of the memory heap profile.
-hp2ps -e8in -c bmm-simulate.hp
+hp2ps -e10in -c bmm-simulate.hp
 
 # Print which RTS options are available.
 # stack exec bmm-simulate -- +RTS -?

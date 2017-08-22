@@ -25,7 +25,7 @@ import qualified RTree                       as Tree
 import qualified System.Environment          as Sys
 import qualified Transition                  as Trans
 
-import qualified Numeric.LinearAlgebra as L
+-- import qualified Numeric.LinearAlgebra as L
 
 -- Automatic version information does not work with flycheck ... ahhhh.
 -- However, intero does not provide show warnings and so on.
@@ -40,13 +40,14 @@ main = do
   args <- Sys.getArgs
   bmSimArgs <- Args.parseBMSimArgs
   let seedArg = Args.seed bmSimArgs
-  -- This is super complicated. Is there an easier way?
-  generator <-
-    if seedArg == "random"
-    then
-      Rand.getStdGen
-    else
-    return $ Rand.mkStdGen (read seedArg :: Int)
+  generator <- case seedArg of
+      "random" -> Rand.getStdGen
+               -- This is a little tricky because it is hard to parse two
+               -- integers on the command line (space messes things up and
+               -- workarounds are not user friendly). Like this, the second seed
+               -- is always set to one (it turns out the getStdGen also always
+               -- sets the second seed to one).
+      _        -> return (read $ seedArg ++ " 1" :: Rand.StdGen)
   -- Mutation model.
   let stateFreqs = Args.stateFreqs bmSimArgs
       kappa      = Args.kappa bmSimArgs
