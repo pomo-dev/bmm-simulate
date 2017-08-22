@@ -27,14 +27,14 @@ module RTree
 -- Branch lengths on trees are measured in Double.
 type BranchLn = Double
 
--- The tree data type with node names or states of type a. The branch length of
--- type b is the length from the current to the left and right child.
-data RTree a b = Node { state :: a
-                      , lBrLn :: b
+-- The strict tree data type with node names or states of type a. The branch
+-- length of type b is the length from the current to the left and right child.
+data RTree a b = Node { state :: !a
+                      , lBrLn :: !b
                       , lChld :: RTree a b
-                      , rBrLn :: b
+                      , rBrLn :: !b
                       , rChld :: RTree a b }
-               | Leaf { state :: a }
+               | Leaf { state :: !a }
                deriving (Eq, Show, Read)
 
 -- Make (RTree a) a functor. Like this, we can scale branch lengths or convert
