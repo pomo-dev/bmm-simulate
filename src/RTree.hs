@@ -63,9 +63,9 @@ totalBrLn t = lBrLn t + rBrLn t
 --     * preOrderTraversal transitionProb lc
 --     * preOrderTraversal transitionProb rc
 
-getLeaves :: RTree a b -> [RTree a b]
+getLeaves :: RTree a b -> [a]
 getLeaves (Node _ _ lc _ rc) = getLeaves lc ++ getLeaves rc
-getLeaves leaf = [leaf]
+getLeaves leaf = [state leaf]
 
 -- -- Some examples and tests.
 -- myLeftLeaf :: RTree Char b

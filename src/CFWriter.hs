@@ -50,16 +50,18 @@ getDataLine :: Chrom -> Pos -> DataOneSite -> String
 getDataLine chrom pos bstates = chrom ++ " " ++ show pos ++ " " ++ bStatesString ++ "\n"
   where bStatesString = unwords $ map show bstates
 
--- At the moment, all data is passed around in one go, if I have problems, I
--- have to separate writing on a line per line basis.
-type DataAllSites = [DataOneSite]
+open :: FilePath -> IO Handle
+open file = openFile file WriteMode
 
 -- Write a counts file. For now, the chromosome name is set to SIM for simulated
 -- and the position is just a counter starting at 1.
-write :: FilePath -> NSites -> PopulationNames -> DataAllSites -> IO ()
-write fileName nSites popNames bStatesArray = do
-  handle <- openFile fileName WriteMode
+writeHeader :: Handle -> NSites -> PopulationNames -> IO ()
+writeHeader handle nSites popNames =
   hPutStr handle $ header nSites popNames
-  let dataLines = zipWith (getDataLine "SIM") [1..] bStatesArray
-  mapM_ (hPutStr handle) dataLines
-  hClose handle
+
+writeLine :: Handle -> Chrom -> Pos -> DataOneSite -> IO ()
+writeLine handle chr pos bStates =
+  hPutStr handle $ getDataLine chr pos bStates
+
+close :: Handle -> IO ()
+close = hClose

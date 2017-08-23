@@ -70,16 +70,6 @@ populateAndFlattenTree (Tree.Leaf a) s = return [(a, s)]
 populateAndFlattenTree (Tree.Node _ lp lc rp rc) s = liftM2 (++) (jumpDownBranch lp lc) (jumpDownBranch rp rc)
   where jumpDownBranch p t = jump s p >>= populateAndFlattenTree t
 
--- Simulate data (states at the leaves) for a tree with transition probabilities
--- on its branches and with the stationary distribution of states at the root.
--- This function has to be impure because the state at the root is randomly
--- chosen from the stationary distribution and the states at the nodes and
--- leaves are randomly chosen according to the transition probabilities.
-simulateSite :: (RandomGen g) => D.Generator RM.State -> Tree.RTree a [D.Generator RM.State] -> Rand g [(a, RM.State)]
-simulateSite f t = do
-  !rootState <- D.getSample f
-  populateAndFlattenTree t rootState
-
 stationaryDistToGenerator :: RM.StationaryDist -> D.Generator RM.State
 stationaryDistToGenerator f = fG
   -- TODO: This is a little complicated. I need to convert the vector to a list
@@ -97,11 +87,21 @@ treeProbMatrixToTreeGenerator t = tG
     -- the tree (fmap) and for each target state on each branch (map).
     !tG = (fmap . map) (D.fromDistribution . D.fromList . zip ([0..] :: [RM.State])) tL
 
--- Simulate n sites.
-simulateNSites :: (RandomGen g) => Int -> RM.StationaryDist -> Tree.RTree a ProbMatrix -> Rand g [[(a, RM.State)]]
-simulateNSites n f t = replicateM n simOneSite
-  where !fG = stationaryDistToGenerator f
-        !simOneSite = simulateSite fG (treeProbMatrixToTreeGenerator t)
+-- Simulate data (states at the leaves) for a tree with transition probabilities
+-- on its branches and with the stationary distribution of states at the root.
+-- This function has to be impure because the state at the root is randomly
+-- chosen from the stationary distribution and the states at the nodes and
+-- leaves are randomly chosen according to the transition probabilities.
+simulateSite :: (RandomGen g) => D.Generator RM.State -> Tree.RTree a [D.Generator RM.State] -> Rand g [(a, RM.State)]
+simulateSite f t = do
+  !rootState <- D.getSample f
+  populateAndFlattenTree t rootState
+
+-- -- Simulate n sites.
+-- simulateNSites :: (RandomGen g) => Int -> RM.StationaryDist -> Tree.RTree a ProbMatrix -> Rand g [[(a, RM.State)]]
+-- simulateNSites n f t = replicateM n simOneSite
+--   where !fG = stationaryDistToGenerator f
+--         !simOneSite = simulateSite fG (treeProbMatrixToTreeGenerator t)
 
 -- Randomly draw an index according to a given generator. Use the stationary
 -- distribution and rooted tree at the drawn index to simulate a site. This is
@@ -117,16 +117,16 @@ simulateSiteGen gen fs trs = do
       !t = trs !! i
   simulateSite f t
 
--- Simulate n sites. For a given distribution, draw random indices. Use the
--- stationary distribution and rooted tree at the drawn index to simulate a
--- site. This is useful for simulation, e.g., Gamma rate heterogeneity models.
-simulateNSitesDistr :: (RandomGen g) =>
-                       Int
-                    -> D.Distribution Int
-                    -> [RM.StationaryDist]
-                    -> [Tree.RTree a ProbMatrix]
-                    -> Rand g [[(a, RM.State)]]
-simulateNSitesDistr n d fs trs = replicateM n simOneSite
-  where !dG         = D.fromDistribution d
-        !fGs        = map stationaryDistToGenerator fs
-        !simOneSite = simulateSiteGen dG fGs (map treeProbMatrixToTreeGenerator trs)
+-- -- Simulate n sites. For a given distribution, draw random indices. Use the
+-- -- stationary distribution and rooted tree at the drawn index to simulate a
+-- -- site. This is useful for simulation, e.g., Gamma rate heterogeneity models.
+-- simulateNSitesDistr :: (RandomGen g) =>
+--                        Int
+--                     -> D.Distribution Int
+--                     -> [RM.StationaryDist]
+--                     -> [Tree.RTree a ProbMatrix]
+--                     -> Rand g [[(a, RM.State)]]
+-- simulateNSitesDistr n d fs trs = replicateM n simOneSite
+--   where !dG         = D.fromDistribution d
+--         !fGs        = map stationaryDistToGenerator fs
+--         !simOneSite = simulateSiteGen dG fGs (map treeProbMatrixToTreeGenerator trs)

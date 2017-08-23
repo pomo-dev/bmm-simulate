@@ -45,8 +45,8 @@ main = do
                -- This is a little tricky because it is hard to parse two
                -- integers on the command line (space messes things up and
                -- workarounds are not user friendly). Like this, the second seed
-               -- is always set to one (it turns out the getStdGen also always
-               -- sets the second seed to one).
+               -- value is always set to one (it turns out that getStdGen also
+               -- always sets the second seed to one).
       _        -> return (read $ seedArg ++ " 1" :: Rand.StdGen)
   -- Mutation model.
   let stateFreqs = Args.stateFreqs bmSimArgs
@@ -59,25 +59,34 @@ main = do
         hkyModel stateFreqs popSize heterozygosity
       bmRateMatrix     = BM.normalizedRateMatrix mutationModel stateFreqs popSize
       bmStationaryDist = BM.stationaryDist mutationModel stateFreqs popSize
+      bmStationaryGen  = Trans.stationaryDistToGenerator bmStationaryDist
   -- Tree.
   let treeHeight    = Args.treeHeight bmSimArgs
       treeSubs      = Tree.ilsTree treeHeight
       treeBM        = BM.scaleTreeToBMM popSize treeSubs
+      popNames      = Tree.getLeaves treeBM
       treeTransProb = Trans.branchLengthsToTransitionProbs bmRateMatrix treeBM
+      treeGenerator = Trans.treeProbMatrixToTreeGenerator treeTransProb
   -- Other options.
   let nSites = Args.nSites bmSimArgs
+  -- Output file.
+  let fileName = Args.outFileName bmSimArgs
+  fileHandle <- CF.open fileName
+  CF.writeHeader fileHandle nSites popNames
   -- Simulation.
-  let leafs        = Rand.evalRand transition generator
-        where transition = Trans.simulateNSites nSites bmStationaryDist treeTransProb
-      popNames     = map fst $ head leafs
-      dataAllSites = map (map (BS.idToState popSize . snd)) leafs
-      fileName     = Args.outFileName bmSimArgs
-  -- TODO: Gathering all data in a single vector needs a LOT OF MEMORY. It is
-  -- better, to write the file line by line (during the simulation). I.e., get
-  -- rid of Trans.simulateNSites and provide functions that prepare the
-  -- generators as well as functions that simulate and write one site at a time.
-  CF.write fileName nSites popNames dataAllSites
 
+  -- Set chromosome name to "SIM".
+  let leafs  = Rand.evalRand (Trans.simulateSite bmStationaryGen treeGenerator) generator
+      states = map (BS.idToState popSize . snd) leafs
+  CF.writeLine fileHandle "SIM" 1 states
+
+  -- let leafs = Rand.evalRand transition generator
+  --       where transition = Trans.simulateNSites nSites bmStationaryDist treeTransProb
+  --     dataAllSites = map (map (BS.idToState popSize . snd)) leafs
+
+  CF.close fileHandle
+
+  -- TODO: Eventually move output before simulation.
   -- Output.
   putStrLn "Boundary mutation model simulator version 0.1.0.0."
   putStr "Command line: "
