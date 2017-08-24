@@ -35,6 +35,7 @@ library
                      , integration >= 0.2.1
                      , optparse-applicative >= 0.13.2.0
                      , random >= 1.1
+                     , random-fu >= 0.2.7.0
                      , statistics >= 0.13.3.0
                      , text >= 1.2.2.1
                      , vector >= 0.11.0.0
@@ -54,6 +55,7 @@ executable bmm-simulate
                      , integration >= 0.2.1
                      , optparse-applicative >= 0.13.2.0
                      , random >= 1.1
+                     , random-fu >= 0.2.7.0
                      , statistics >= 0.13.3.0
                      , text >= 1.2.2.1
                      , vector >= 0.11.0.0
@@ -73,6 +75,7 @@ test-suite bmm-simulate-test
                      , integration >= 0.2.1
                      , optparse-applicative >= 0.13.2.0
                      , random >= 1.1
+                     , random-fu >= 0.2.7.0
                      , statistics >= 0.13.3.0
                      , text >= 1.2.2.1
                      , vector >= 0.11.0.0

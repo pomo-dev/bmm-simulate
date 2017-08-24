@@ -45,6 +45,7 @@ type Pos   = Int
 -- The set of boundary states for one site.
 type DataOneSite = [BS.State]
 
+-- TODO: Pretty print (e.g., fixed width of CHR and POS columns).
 -- Get a data line in the counts file.
 getDataLine :: Chrom -> Pos -> DataOneSite -> String
 getDataLine chrom pos bstates = chrom ++ " " ++ show pos ++ " " ++ bStatesString ++ "\n"

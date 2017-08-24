@@ -22,8 +22,10 @@ import qualified CFWriter                    as CF
 import           Control.Monad.Random.Strict
 import qualified Data.Distribution           as D
 import           Data.Maybe
+import           Data.Random
 import qualified DNAModel                    as DNA
 import qualified GammaRate                   as G
+import           Numeric.LinearAlgebra
 import qualified RateMatrix                  as RM
 import qualified RTree                       as Tree
 import qualified System.Environment          as Sys
@@ -55,7 +57,6 @@ main = do
   let gammaNCat  = Args.gammaNCat bmSimArgs
       gammaShape = Args.gammaShape bmSimArgs
       gammaMeans = liftM2 G.getMeans gammaNCat gammaShape
-      gammaGen   = fmap (D.fromDistribution . D.uniform) gammaMeans
   -- Boundary mutation model.
   let popSize          = Args.popSize bmSimArgs
       heterozygosity   = Args.heterozygosity bmSimArgs
@@ -66,15 +67,16 @@ main = do
       bmStationaryGen  = Trans.stationaryDistToGenerator bmStationaryDist
   -- Tree.
   let treeHeight = Args.treeHeight bmSimArgs
-      treeSubs   = Tree.ilsTree treeHeight
+      treeSubs   = Tree.ils treeHeight
       treeBM     = BM.scaleTreeToBMM popSize treeSubs
       popNames   = Tree.getLeaves treeBM
       treePrb    = Trans.branchLengthsToTransitionProbs bmRateMatrix treeBM
       treeGen    = Trans.treeProbMatrixToTreeGenerator treePrb
+      -- TODO: This is how to create a Yule tree, implement correct handling.
+      -- (treeYule,_)   = sampleState (Tree.yule 1.0 1.0) generator
   -- Other options.
   let nSites   = Args.nSites bmSimArgs
       fileName = Args.outFileName bmSimArgs
-
   -- Output.
   putStrLn "Boundary mutation model simulator version 0.1.0.0."
   putStr "Command line: "
@@ -131,19 +133,21 @@ main = do
       writer   = CF.writeLine fileHandle "SIM"    :: CF.Pos -> CF.DataOneSite -> IO ()
   -- Simulation; loop over positions.
   let simAndPrintOneSite pos =
-        -- if isJust gammaShape then
-        --   evalRandIO (Trans.simulateSiteGen (fromJust gammaGen) bmStationaryGen treeGenerator)
-        --   >>= writer pos . toStates
-        -- else
+        if isNothing gammaShape then
           evalRandIO (Trans.simulateSite bmStationaryGen treeGen)
           >>= writer pos . toStates
+        else
+          -- Gamma rate heterogeneity is activated.
+          evalRandIO (Trans.simulateSiteGen uniformGen bmStationaryGens treesGen)
+          >>= writer pos . toStates
+        where uniformGen        = D.fromDistribution $ D.uniform [0 .. fromJust gammaNCat - 1]
+              mutationModels    = [ scale s mutationModel | s <- fromJust gammaMeans ]
+              bmRateMatrices    = [ BM.normalizedRateMatrix m stateFreqs popSize | m <- mutationModels ]
+              bmStationaryDists = [ BM.stationaryDist m stateFreqs popSize | m <- mutationModels ]
+              bmStationaryGens  = map Trans.stationaryDistToGenerator bmStationaryDists
+              treesPrb          = [ Trans.branchLengthsToTransitionProbs b treeBM | b <- bmRateMatrices ]
+              treesGen          = map Trans.treeProbMatrixToTreeGenerator treesPrb
   forM_ [1..nSites] simAndPrintOneSite
-  -- if isJust gammaShape then
-  --   forM_ [1..nSites] $ \pos -> evalRandIO (Trans.simulateSiteGen (fromJust gammaGen) bmStationaryGen treeGenerator)
-  --                               >>= writer pos . toStates
-  --   else
-  --   forM_ [1..nSites] $ \pos -> evalRandIO (Trans.simulateSite bmStationaryGen treeGenerator)
-  --                               >>= writer pos . toStates
   -- Done.
   CF.close fileHandle
   putStrLn "Done."

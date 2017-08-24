@@ -21,8 +21,12 @@ module RTree
   , totalBrLn
   , getLeaves
   , toNewick
-  , ilsTree
+  , ils
+  , yule
   ) where
+
+import Data.Random
+import Data.Random.Distribution.Exponential
 
 -- Branch lengths on trees are measured in Double.
 type BranchLn = Double
@@ -50,33 +54,9 @@ totalBrLn t = lBrLn t + rBrLn t
                       + totalBrLn (lChld t)
                       + totalBrLn (rChld t)
 
--- In order to simulate data, I need the probabilities of finding specific
--- states at the tips of a given tree when starting at a given distribution of
--- states at the root. This distribution will be the stationary distribution in
--- my case.
-
--- preOrderTraversal :: Num b => (a -> a -> b -> Double) -> RTree a b -> Double
--- -- The likelihood of a leaf is 1.0.
--- preOrderTraversal _ (Leaf _) = 1.0
--- preOrderTraversal transitionProb (Node s lb lc rb rc)
---   = (transitionProb s (getState lc) lb) * (transitionProb s (getState rc) rb)
---     * preOrderTraversal transitionProb lc
---     * preOrderTraversal transitionProb rc
-
 getLeaves :: RTree a b -> [a]
 getLeaves (Node _ _ lc _ rc) = getLeaves lc ++ getLeaves rc
 getLeaves leaf = [state leaf]
-
--- -- Some examples and tests.
--- myLeftLeaf :: RTree Char b
--- myLeftLeaf = Leaf 'l'
-
--- myRightLeaf :: RTree Char b
--- myRightLeaf = Leaf 'r'
-
-
--- myTree :: RTree Char Integer
--- myTree = Node 'r' 1 myLeftLeaf 2 myRightLeaf
 
 toNewick :: RTree String BranchLn -> String
 toNewick t = toNewick' t ++ ";"
@@ -86,13 +66,25 @@ toNewick t = toNewick' t ++ ";"
                                      toNewick' lc ++ ":" ++ show lb ++ "," ++
                                      toNewick' rc ++ ":" ++ show rb ++ ")"
 
--- The ILS tree with tree height `th`.
+-- | The ILS tree with tree height 'th'.
 -- Newick representation for height 1.0: (((s4:0.5,s3:0.5):0.1,s2:0.6):0.4,s1:1.0);.
-ilsTree :: Double -> RTree String Double
-ilsTree th = Node "root"
-             (th/2.0 - th/10.0) (Node "intern1"
-                                 (th/10.0) (Node "intern2"
-                                            (th/2) (Leaf "s4")
-                                            (th/2) (Leaf "s3"))
-                                 (th/2.0 + th/10.0) (Leaf "s2"))
-             th (Leaf "s1")
+ils :: Double -> RTree String BranchLn
+ils th = Node "root"
+         (th/2.0 - th/10.0) (Node "intern1"
+                              (th/10.0) (Node "intern2"
+                                          (th/2) (Leaf "s4")
+                                          (th/2) (Leaf "s3"))
+                              (th/2.0 + th/10.0) (Leaf "s2"))
+         th (Leaf "s1")
+-- | Yule tree with height 'th' and speciation rate 'lam'.
+yule :: Double -> Double -> RVar (RTree String BranchLn)
+yule th lam = do
+  lBrLnSample <- exponential lam
+  rBrLnSample <- exponential lam
+  let lBrLen = if lBrLnSample >= th then th else lBrLnSample
+      rBrLen = if rBrLnSample >= th then th else rBrLnSample
+  lChild <- if lBrLnSample >= th then pure (Leaf "") else
+              yule (th - lBrLen) lam
+  rChild <- if rBrLnSample >= th then pure (Leaf "") else
+              yule (th - rBrLen) lam
+  return (Node "" lBrLen lChild rBrLen rChild)
