@@ -31,6 +31,7 @@ library
                      , base >= 4.7 && < 5
                      , distribution >= 1.1.1.0
                      , hmatrix >= 0.18.0.0
+                     , integration >= 0.2.1
                      , optparse-applicative >= 0.13.2.0
                      , random >= 1.1
                      , statistics >= 0.13.3.0
@@ -49,6 +50,7 @@ executable bmm-simulate
                      , bmm-simulate
                      , distribution >= 1.1.1.0
                      , hmatrix >= 0.18.0.0
+                     , integration >= 0.2.1
                      , optparse-applicative >= 0.13.2.0
                      , random >= 1.1
                      , statistics >= 0.13.3.0
@@ -67,6 +69,7 @@ test-suite bmm-simulate-test
                      , bmm-simulate
                      , distribution >= 1.1.1.0
                      , hmatrix >= 0.18.0.0
+                     , integration >= 0.2.1
                      , optparse-applicative >= 0.13.2.0
                      , random >= 1.1
                      , statistics >= 0.13.3.0
