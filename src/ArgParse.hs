@@ -34,6 +34,8 @@ data BMSimArgs = BMSimArgs
   { outFileName    :: String
   , stateFreqs     :: L.Vector L.R
   , kappa          :: Double
+  , gammaShape     :: Maybe Double
+  , gammaNCat      :: Maybe Int
   , popSize        :: Int
   , heterozygosity :: Double
   , treeHeight     :: Double
@@ -54,10 +56,10 @@ outFileNameOpt :: Parser String
 outFileNameOpt = strOption
   ( long "output"
     <> short 'o'
-    <> metavar "FILENAME"
+    <> metavar "FILEPATH"
     <> value Def.outFileName
     <> showDefault
-    <> help "Write output to FILENAME (counts file format)")
+    <> help "Write output to FILEPATH in counts file format")
 
 -- TODO: Define default values at the top (probably move all this to Main.hs).
 -- Option to input the stationary frequencies of the mutation model.
@@ -65,10 +67,10 @@ stateFreqsOpt :: Parser (L.Vector L.R)
 stateFreqsOpt = option (attoReadM parseStateFreq)
   ( long "freq"
     <> short 'f'
-    <> metavar "pi_A,pi_C,pi_G,pi_T"
+    <> metavar "DOUBLE,DOUBLE,DOUBLE,DOUBLE"
     <> value Def.stateFreqs
     <> showDefault
-    <> help "Set the stationary frequencies of the nucleotides")
+    <> help "Set the stationary frequencies of the nucleotides in order A, C, G and T")
 
 -- Read a stationary frequency of the form `pi_A,pi_C,pi_G,...`.
 parseStateFreq :: A.Parser DNA.StateFreqVec
@@ -86,15 +88,27 @@ kappaOpt :: Parser Double
 kappaOpt = option auto
   ( long "kappa"
     <> short 'k'
-    <> metavar "VALUE"
+    <> metavar "DOUBLE"
     <> value Def.kappa
     <> showDefault
     <> help "Set the kappa value for the HKY model" )
 
+gammaShapeOpt :: Parser (Maybe Double)
+gammaShapeOpt = optional $ option auto
+  ( long "gamma-shape"
+    <> metavar "DOUBLE"
+    <> help "Set gamma shape parameter; activate gamma rate heterogeneity (default: off)" )
+
+gammaNCatOpt :: Parser (Maybe Int)
+gammaNCatOpt = optional $ option auto
+  ( long "gamma-ncat"
+    <> metavar "INT"
+    <> help "Set the number of gamma rate categories (default: off)" )
+
 popSizeOpt :: Parser Int
 popSizeOpt = option auto
   ( short 'N'
-    <> metavar "VALUE"
+    <> metavar "DOUBLE"
     <> value Def.popSize
     <> showDefault
     <> help "Set the virtual population size" )
@@ -103,7 +117,7 @@ heterozygosityOpt :: Parser Double
 heterozygosityOpt = option auto
   ( long "heterozygosity"
     <> short 't'
-    <> metavar "VALUE"
+    <> metavar "DOUBLE"
     <> value Def.heterozygosity
     <> showDefault
     <> help "Set the heterozygosity" )
@@ -112,7 +126,7 @@ treeHeightOpt :: Parser Double
 treeHeightOpt = option auto
   ( long "treeheight"
     <> short 'h'
-    <> metavar "VALUE"
+    <> metavar "DOUBLE"
     <> value Def.treeHeight
     <> showDefault
     <> help "Set the tree height [average number of substitutions]" )
@@ -121,7 +135,7 @@ nSitesOpt :: Parser Int
 nSitesOpt = option auto
   ( long "nsites"
     <> short 'n'
-    <> metavar "VALUE"
+    <> metavar "INT"
     <> value Def.nSites
     <> showDefault
     <> help "Set the number of sites to simulate" )
@@ -130,7 +144,7 @@ seedOpt :: Parser String
 seedOpt = strOption
   ( long "seed"
     <> short 's'
-    <> metavar "VALUE"
+    <> metavar "INT"
     <> value "random"
     <> showDefault
     <> help "Set the seed for the random number generator" )
@@ -141,6 +155,8 @@ bmSimOptions = BMSimArgs
   <$> outFileNameOpt
   <*> stateFreqsOpt
   <*> kappaOpt
+  <*> gammaShapeOpt
+  <*> gammaNCatOpt
   <*> popSizeOpt
   <*> heterozygosityOpt
   <*> treeHeightOpt

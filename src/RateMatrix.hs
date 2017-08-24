@@ -46,4 +46,3 @@ setDiagonal m = diagZeroes - diag (fromList rowSums)
 toExchMatrix :: RateMatrix -> StationaryDist -> ExchMatrix
 toExchMatrix m f = m <> diag oneOverF
   where oneOverF = cmap (1.0/) f
-

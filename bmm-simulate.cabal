@@ -22,6 +22,7 @@ library
                      , Defaults
                      , Distribution
                      , DNAModel
+                     , GammaRate
                      , RateMatrix
                      , RTree
                      , Tools

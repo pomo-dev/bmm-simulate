@@ -17,7 +17,6 @@ Gamma rate heterogeneity. This module provides the necessary definitions.
 
 module GammaRate where
 
--- import qualified Distribution                  as D
 import           Numeric.Integration.TanhSinh
 import           Statistics.Distribution
 import           Statistics.Distribution.Gamma
@@ -26,8 +25,8 @@ import           Statistics.Distribution.Gamma
 -- (the rate or scale is set such that the mean is 1.0), return a list of rates
 -- that represent the respective categories. Use the mean rate for each
 -- category.
-getGammaRatesMean :: Int -> Double -> [Double]
-getGammaRatesMean n alpha = means ++ lastMean
+getMeans :: Int -> Double -> [Double]
+getMeans n alpha = means ++ lastMean
   where gamma = gammaDistr alpha (1.0/alpha)
         quantiles = [ quantile gamma (fromIntegral i / fromIntegral n) | i <- [0..n] ]
         -- Calculate the mean rate. Multiplication with the number of rate

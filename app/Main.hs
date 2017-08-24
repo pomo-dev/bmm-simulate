@@ -20,7 +20,10 @@ import qualified BndModel                    as BM
 import qualified BndState                    as BS
 import qualified CFWriter                    as CF
 import           Control.Monad.Random.Strict
+import qualified Data.Distribution           as D
+import           Data.Maybe
 import qualified DNAModel                    as DNA
+import qualified GammaRate                   as G
 import qualified RateMatrix                  as RM
 import qualified RTree                       as Tree
 import qualified System.Environment          as Sys
@@ -48,6 +51,11 @@ main = do
   let stateFreqs = Args.stateFreqs bmSimArgs
       kappa      = Args.kappa bmSimArgs
       hkyModel   = DNA.rateMatrixHKY stateFreqs kappa
+  -- Gamma rate heterogeneity, handled with the Maybe monad.
+  let gammaNCat  = Args.gammaNCat bmSimArgs
+      gammaShape = Args.gammaShape bmSimArgs
+      gammaMeans = liftM2 G.getMeans gammaNCat gammaShape
+      gammaGen   = fmap (D.fromDistribution . D.uniform) gammaMeans
   -- Boundary mutation model.
   let popSize          = Args.popSize bmSimArgs
       heterozygosity   = Args.heterozygosity bmSimArgs
@@ -57,12 +65,12 @@ main = do
       bmStationaryDist = BM.stationaryDist mutationModel stateFreqs popSize
       bmStationaryGen  = Trans.stationaryDistToGenerator bmStationaryDist
   -- Tree.
-  let treeHeight    = Args.treeHeight bmSimArgs
-      treeSubs      = Tree.ilsTree treeHeight
-      treeBM        = BM.scaleTreeToBMM popSize treeSubs
-      popNames      = Tree.getLeaves treeBM
-      treeTransProb = Trans.branchLengthsToTransitionProbs bmRateMatrix treeBM
-      treeGenerator = Trans.treeProbMatrixToTreeGenerator treeTransProb
+  let treeHeight = Args.treeHeight bmSimArgs
+      treeSubs   = Tree.ilsTree treeHeight
+      treeBM     = BM.scaleTreeToBMM popSize treeSubs
+      popNames   = Tree.getLeaves treeBM
+      treePrb    = Trans.branchLengthsToTransitionProbs bmRateMatrix treeBM
+      treeGen    = Trans.treeProbMatrixToTreeGenerator treePrb
   -- Other options.
   let nSites   = Args.nSites bmSimArgs
       fileName = Args.outFileName bmSimArgs
@@ -95,6 +103,14 @@ main = do
   print stateFreqs
   putStr "And a kappa value of: "
   print kappa
+  putStr "Gamma rate heterogeneity: "
+  print $ isJust gammaShape
+  when (isJust gammaShape) $ do
+    putStr "Shape parameter: "
+    print $ fromJust gammaShape
+  when (isJust gammaMeans) $ do
+    putStr "This corresponds to uniformly distributed rates: "
+    print $ fromJust gammaMeans
 
   putStrLn ""
   putStrLn "--"
@@ -114,8 +130,20 @@ main = do
   let toStates = map (BS.idToState popSize . snd) :: [(a, RM.State)] -> [BS.State]
       writer   = CF.writeLine fileHandle "SIM"    :: CF.Pos -> CF.DataOneSite -> IO ()
   -- Simulation; loop over positions.
-  forM_ [1..nSites] $ \pos -> evalRandIO (Trans.simulateSite bmStationaryGen treeGenerator)
-                              >>= writer pos . toStates
+  let simAndPrintOneSite pos =
+        -- if isJust gammaShape then
+        --   evalRandIO (Trans.simulateSiteGen (fromJust gammaGen) bmStationaryGen treeGenerator)
+        --   >>= writer pos . toStates
+        -- else
+          evalRandIO (Trans.simulateSite bmStationaryGen treeGen)
+          >>= writer pos . toStates
+  forM_ [1..nSites] simAndPrintOneSite
+  -- if isJust gammaShape then
+  --   forM_ [1..nSites] $ \pos -> evalRandIO (Trans.simulateSiteGen (fromJust gammaGen) bmStationaryGen treeGenerator)
+  --                               >>= writer pos . toStates
+  --   else
+  --   forM_ [1..nSites] $ \pos -> evalRandIO (Trans.simulateSite bmStationaryGen treeGenerator)
+  --                               >>= writer pos . toStates
   -- Done.
   CF.close fileHandle
   putStrLn "Done."

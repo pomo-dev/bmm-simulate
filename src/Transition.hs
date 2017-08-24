@@ -92,16 +92,13 @@ treeProbMatrixToTreeGenerator t = tG
 -- This function has to be impure because the state at the root is randomly
 -- chosen from the stationary distribution and the states at the nodes and
 -- leaves are randomly chosen according to the transition probabilities.
-simulateSite :: (RandomGen g) => D.Generator RM.State -> Tree.RTree a [D.Generator RM.State] -> Rand g [(a, RM.State)]
+simulateSite :: (RandomGen g) =>
+                D.Generator RM.State
+             -> Tree.RTree a [D.Generator RM.State]
+             -> Rand g [(a, RM.State)]
 simulateSite f t = do
   !rootState <- D.getSample f
   populateAndFlattenTree t rootState
-
--- -- Simulate n sites.
--- simulateNSites :: (RandomGen g) => Int -> RM.StationaryDist -> Tree.RTree a ProbMatrix -> Rand g [[(a, RM.State)]]
--- simulateNSites n f t = replicateM n simOneSite
---   where !fG = stationaryDistToGenerator f
---         !simOneSite = simulateSite fG (treeProbMatrixToTreeGenerator t)
 
 -- Randomly draw an index according to a given generator. Use the stationary
 -- distribution and rooted tree at the drawn index to simulate a site. This is
@@ -116,17 +113,3 @@ simulateSiteGen gen fs trs = do
   let !f = fs  !! i
       !t = trs !! i
   simulateSite f t
-
--- -- Simulate n sites. For a given distribution, draw random indices. Use the
--- -- stationary distribution and rooted tree at the drawn index to simulate a
--- -- site. This is useful for simulation, e.g., Gamma rate heterogeneity models.
--- simulateNSitesDistr :: (RandomGen g) =>
---                        Int
---                     -> D.Distribution Int
---                     -> [RM.StationaryDist]
---                     -> [Tree.RTree a ProbMatrix]
---                     -> Rand g [[(a, RM.State)]]
--- simulateNSitesDistr n d fs trs = replicateM n simOneSite
---   where !dG         = D.fromDistribution d
---         !fGs        = map stationaryDistToGenerator fs
---         !simOneSite = simulateSiteGen dG fGs (map treeProbMatrixToTreeGenerator trs)

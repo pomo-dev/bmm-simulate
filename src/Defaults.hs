@@ -20,35 +20,35 @@ import qualified DNAModel              as DNA
 import           Numeric.LinearAlgebra
 import qualified System.Random         as Rand
 
--- Output file name.
+-- | Output file name.
 outFileName :: String
 outFileName = "Test.cf"
 
--- Stationary distribution of the mutation model (or stationary frequencies).
+-- | Stationary distribution of the mutation model (or stationary frequencies).
 stateFreqs :: DNA.StateFreqVec
 stateFreqs = vector [0.3, 0.2, 0.2, 0.3]
 
--- Virtual population size.
+-- | Virtual population size.
 popSize :: Int
 popSize = 9
 
--- A kappa value of 6.25 corresponds to a transition to transversion ratio of
+-- | A kappa value of 6.25 corresponds to a transition to transversion ratio of
 -- 3.0
 kappa :: Double
 kappa = 6.25
 
--- Heterozygosity value.
+-- | Heterozygosity value.
 heterozygosity :: Double
 heterozygosity = 0.0025
 
--- Tree height.
+-- | Tree height.
 treeHeight :: Double
 treeHeight = 0.005
 
--- Number of sites to simulate.
+-- | Number of sites to simulate.
 nSites :: Int
 nSites = 1000000
 
--- By default, the seed is random.
+-- | By default, the seed is random.
 seed :: IO Rand.StdGen
 seed = Rand.getStdGen
