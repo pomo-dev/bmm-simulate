@@ -19,8 +19,9 @@ import qualified ArgParse                    as Args
 import qualified BndModel                    as BM
 import qualified BndState                    as BS
 import qualified CFWriter                    as CF
-import qualified Control.Monad.Random.Strict as Rand
+import           Control.Monad.Random.Strict
 import qualified DNAModel                    as DNA
+import qualified RateMatrix                  as RM
 import qualified RTree                       as Tree
 import qualified System.Environment          as Sys
 import qualified Transition                  as Trans
@@ -40,14 +41,9 @@ main = do
   args <- Sys.getArgs
   bmSimArgs <- Args.parseBMSimArgs
   let seedArg = Args.seed bmSimArgs
-  generator <- case seedArg of
-      "random" -> Rand.getStdGen
-               -- This is a little tricky because it is hard to parse two
-               -- integers on the command line (space messes things up and
-               -- workarounds are not user friendly). Like this, the second seed
-               -- value is always set to one (it turns out that getStdGen also
-               -- always sets the second seed to one).
-      _        -> return (read $ seedArg ++ " 1" :: Rand.StdGen)
+  unless (seedArg == "random") $ setStdGen (read $ seedArg ++ " 1")
+  generator <- getStdGen
+
   -- Mutation model.
   let stateFreqs = Args.stateFreqs bmSimArgs
       kappa      = Args.kappa bmSimArgs
@@ -68,25 +64,9 @@ main = do
       treeTransProb = Trans.branchLengthsToTransitionProbs bmRateMatrix treeBM
       treeGenerator = Trans.treeProbMatrixToTreeGenerator treeTransProb
   -- Other options.
-  let nSites = Args.nSites bmSimArgs
-  -- Output file.
-  let fileName = Args.outFileName bmSimArgs
-  fileHandle <- CF.open fileName
-  CF.writeHeader fileHandle nSites popNames
-  -- Simulation.
+  let nSites   = Args.nSites bmSimArgs
+      fileName = Args.outFileName bmSimArgs
 
-  -- Set chromosome name to "SIM".
-  let leafs  = Rand.evalRand (Trans.simulateSite bmStationaryGen treeGenerator) generator
-      states = map (BS.idToState popSize . snd) leafs
-  CF.writeLine fileHandle "SIM" 1 states
-
-  -- let leafs = Rand.evalRand transition generator
-  --       where transition = Trans.simulateNSites nSites bmStationaryDist treeTransProb
-  --     dataAllSites = map (map (BS.idToState popSize . snd)) leafs
-
-  CF.close fileHandle
-
-  -- TODO: Eventually move output before simulation.
   -- Output.
   putStrLn "Boundary mutation model simulator version 0.1.0.0."
   putStr "Command line: "
@@ -95,12 +75,11 @@ main = do
   putStrLn ""
   putStrLn "--"
   putStrLn "General options."
-  putStrLn $ "Seed: " ++ seedArg
-  putStr "Generator: "
-  print generator
+  putStr $ "Seed: " ++ seedArg
+  putStrLn $ " (Generator: " ++ show generator ++ ")"
   putStr "Number of simulated sites: "
   print nSites
-  putStr "Output written to: "
+  putStr "Output will be written to: "
   print fileName
 
   putStrLn ""
@@ -124,3 +103,19 @@ main = do
   putStrLn $ Tree.toNewick treeSubs
   putStr "Species tree in  mutations and frequency shifts: "
   putStrLn $ Tree.toNewick treeBM
+
+  putStrLn ""
+  putStrLn "--"
+  putStrLn "Performing simulation."
+  -- Prepare output file.
+  fileHandle <- CF.open fileName
+  CF.writeHeader fileHandle nSites popNames
+  -- Simulation helpers.
+  let toStates = map (BS.idToState popSize . snd) :: [(a, RM.State)] -> [BS.State]
+      writer   = CF.writeLine fileHandle "SIM"    :: CF.Pos -> CF.DataOneSite -> IO ()
+  -- Simulation; loop over positions.
+  forM_ [1..nSites] $ \pos -> evalRandIO (Trans.simulateSite bmStationaryGen treeGenerator)
+                              >>= writer pos . toStates
+  -- Done.
+  CF.close fileHandle
+  putStrLn "Done."
