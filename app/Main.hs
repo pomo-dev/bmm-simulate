@@ -31,14 +31,14 @@ import qualified RTree                       as Tree
 import qualified System.Environment          as Sys
 import qualified Transition                  as Trans
 
--- import qualified Numeric.LinearAlgebra as L
-
 -- Automatic version information does not work with flycheck ... ahhhh.
 -- However, intero does not provide show warnings and so on.
 -- import           Paths_bmm_simulate        (version)
 -- import           Data.Version              (showVersion)
 
 -- TODO: Read in tree type, specific mutation model.
+
+-- TODO: Use a different random number generator (e.g., MWC).
 
 main :: IO ()
 main = do
@@ -73,7 +73,8 @@ main = do
       treePrb    = Trans.branchLengthsToTransitionProbs bmRateMatrix treeBM
       treeGen    = Trans.treeProbMatrixToTreeGenerator treePrb
       -- TODO: This is how to create a Yule tree, implement correct handling.
-      -- (treeYule,_)   = sampleState (Tree.yule 1.0 1.0) generator
+      (treeYule,_)   = sampleState (Tree.yule 1.0 1.0) generator
+  print $ Tree.toNewick treeYule
   -- Other options.
   let nSites   = Args.nSites bmSimArgs
       fileName = Args.outFileName bmSimArgs

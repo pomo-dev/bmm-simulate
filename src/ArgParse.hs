@@ -23,6 +23,7 @@ import qualified Defaults              as Def
 import qualified DNAModel              as DNA
 import qualified Numeric.LinearAlgebra as L
 import           Options.Applicative
+import           RTree                 (TreeType)
 
 -- Convenience function to read in more complicated command line options with
 -- attoparsec and optparse
@@ -39,6 +40,7 @@ data BMSimArgs = BMSimArgs
   , popSize        :: Int
   , heterozygosity :: Double
   , treeHeight     :: Double
+  , treeType       :: TreeType
   , nSites         :: Int
   , seed           :: String }
 
@@ -49,7 +51,6 @@ parseBMSimArgs = execParser $ info (helper <*> bmSimOptions)
   ( fullDesc
     <> progDesc "Simulate count files using the boundary mutation model."
     <> header "Boundary mutation model simulator")
-
 
 -- General things and options.
 outFileNameOpt :: Parser String
@@ -120,16 +121,24 @@ heterozygosityOpt = option auto
     <> metavar "DOUBLE"
     <> value Def.heterozygosity
     <> showDefault
-    <> help "Set the heterozygosity" )
+    <> help "Set heterozygosity" )
 
 treeHeightOpt :: Parser Double
 treeHeightOpt = option auto
-  ( long "treeheight"
+  ( long "tree-height"
     <> short 'h'
     <> metavar "DOUBLE"
     <> value Def.treeHeight
     <> showDefault
-    <> help "Set the tree height [average number of substitutions]" )
+    <> help "Set tree height [average number of substitutions]" )
+
+treeTypeOpt :: Parser TreeType
+treeTypeOpt = option auto
+  ( long "tree-type"
+    <> metavar "TYPE"
+    <> value Def.treeType
+    <> showDefault
+    <> help "Set tree type; ILS|Yule")
 
 nSitesOpt :: Parser Int
 nSitesOpt = option auto
@@ -138,7 +147,7 @@ nSitesOpt = option auto
     <> metavar "INT"
     <> value Def.nSites
     <> showDefault
-    <> help "Set the number of sites to simulate" )
+    <> help "Set number of sites to simulate" )
 
 seedOpt :: Parser String
 seedOpt = strOption
@@ -147,7 +156,7 @@ seedOpt = strOption
     <> metavar "INT"
     <> value "random"
     <> showDefault
-    <> help "Set the seed for the random number generator" )
+    <> help "Set seed for the random number generator" )
 
 -- Composition of all options.
 bmSimOptions :: Parser BMSimArgs
@@ -160,5 +169,6 @@ bmSimOptions = BMSimArgs
   <*> popSizeOpt
   <*> heterozygosityOpt
   <*> treeHeightOpt
+  <*> treeTypeOpt
   <*> nSitesOpt
   <*> seedOpt

@@ -18,6 +18,7 @@ phylogenetic analysis.
 module RTree
   ( BranchLn
   , RTree(..)
+  , TreeType(..)
   , totalBrLn
   , getLeaves
   , toNewick
@@ -46,6 +47,10 @@ data RTree a b = Node { state :: !a
 instance Functor (RTree a) where
   fmap _ (Leaf a) = Leaf a
   fmap f (Node a lb lc rb rc) = Node a (f lb) (fmap f lc) (f rb) (fmap f rc)
+
+-- | Tree type. At the moment, ILS (incomplete lineage sorting) and Yule trees
+-- are supported.
+data TreeType = ILS | Yule deriving (Eq, Read, Show)
 
 -- The total branch length; only works when the branch lengths are numbers.
 totalBrLn :: RTree a BranchLn -> BranchLn
@@ -76,6 +81,7 @@ ils th = Node "root"
                                           (th/2) (Leaf "s3"))
                               (th/2.0 + th/10.0) (Leaf "s2"))
          th (Leaf "s1")
+
 -- | Yule tree with height 'th' and speciation rate 'lam'.
 yule :: Double -> Double -> RVar (RTree String BranchLn)
 yule th lam = do
@@ -87,4 +93,15 @@ yule th lam = do
               yule (th - lBrLen) lam
   rChild <- if rBrLnSample >= th then pure (Leaf "") else
               yule (th - rBrLen) lam
-  return (Node "" lBrLen lChild rBrLen rChild)
+  return $ labelLeaves (Node "" lBrLen lChild rBrLen rChild)
+
+-- | Set all node states to the empty string "" and label the leaves from 0 to
+-- the number of leaves.
+labelLeaves :: RTree String BranchLn -> RTree String BranchLn
+labelLeaves t = fst $ labelLeaves' t 0
+
+labelLeaves' :: RTree a b -> Int -> (RTree String b, Int)
+labelLeaves' (Leaf _) n = (Leaf (show n), n+1)
+labelLeaves' (Node _ lB lC rB rC) n = (Node "" lB lC' rB rC', n'')
+  where (lC', n' ) = labelLeaves' lC n
+        (rC', n'') = labelLeaves' rC n'

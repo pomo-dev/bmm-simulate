@@ -18,6 +18,7 @@ module Defaults where
 
 import qualified DNAModel              as DNA
 import           Numeric.LinearAlgebra
+import           RTree                 (TreeType(..))
 import qualified System.Random         as Rand
 
 -- | Output file name.
@@ -44,6 +45,11 @@ heterozygosity = 0.0025
 -- | Tree height.
 treeHeight :: Double
 treeHeight = 0.005
+
+-- | Tree type. At the moment, ILS (incomplete lineage sorting) and Yule trees
+-- are supported.
+treeType :: TreeType
+treeType = ILS
 
 -- | Number of sites to simulate.
 nSites :: Int
