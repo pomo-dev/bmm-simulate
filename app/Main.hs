@@ -66,15 +66,19 @@ main = do
       bmStationaryDist = BM.stationaryDist mutationModel stateFreqs popSize
       bmStationaryGen  = Trans.stationaryDistToGenerator bmStationaryDist
   -- Tree.
-  let treeHeight = Args.treeHeight bmSimArgs
-      treeSubs   = Tree.ils treeHeight
+  let treeHeight             = Args.treeHeight bmSimArgs
+      treeType               = Args.treeType bmSimArgs
+      maybeTreeYuleRecipRate = Args.treeYuleRecipRate bmSimArgs
+      treeSubs = case treeType of
+                   "SIM"  -> Tree.ils treeHeight
+                   "Yule" -> fst $ sampleState (Tree.yule treeHeight recipRate) generator
+                     where recipRate = fromMaybe (error "No Yule reciprocal speciation rate specified.")
+                                       maybeTreeYuleRecipRate
+                   _      -> error $ "Tree type not recognized: " ++ treeType
       treeBM     = BM.scaleTreeToBMM popSize treeSubs
       popNames   = Tree.getLeaves treeBM
       treePrb    = Trans.branchLengthsToTransitionProbs bmRateMatrix treeBM
       treeGen    = Trans.treeProbMatrixToTreeGenerator treePrb
-      -- TODO: This is how to create a Yule tree, implement correct handling.
-      (treeYule,_)   = sampleState (Tree.yule 1.0 1.0) generator
-  print $ Tree.toNewick treeYule
   -- Other options.
   let nSites   = Args.nSites bmSimArgs
       fileName = Args.outFileName bmSimArgs
@@ -118,6 +122,12 @@ main = do
   putStrLn ""
   putStrLn "--"
   putStrLn "Tree options."
+  putStrLn $ "Tree type: " ++ treeType
+  putStr "Tree height in average number of substitutions: "
+  print treeHeight
+  when (treeType == "Yule") $ do
+    putStr "Reciprocal Yule speciation rate: "
+    print $ fromMaybe (error "No reciprocal Yule speciation rate specified.") maybeTreeYuleRecipRate
   putStr "Species tree in average number of substitutions: "
   putStrLn $ Tree.toNewick treeSubs
   putStr "Species tree in  mutations and frequency shifts: "
@@ -141,8 +151,10 @@ main = do
           -- Gamma rate heterogeneity is activated.
           evalRandIO (Trans.simulateSiteGen uniformGen bmStationaryGens treesGen)
           >>= writer pos . toStates
-        where uniformGen        = D.fromDistribution $ D.uniform [0 .. fromJust gammaNCat - 1]
-              mutationModels    = [ scale s mutationModel | s <- fromJust gammaMeans ]
+        where nCat              = fromMaybe (error "The number of gamma rate categories was not given.") gammaNCat
+              uniformGen        = D.fromDistribution $ D.uniform [0 .. nCat - 1]
+              means             = fromMaybe (error "No gamma shape parameter given.") gammaMeans
+              mutationModels    = [ scale s mutationModel | s <- means ]
               bmRateMatrices    = [ BM.normalizedRateMatrix m stateFreqs popSize | m <- mutationModels ]
               bmStationaryDists = [ BM.stationaryDist m stateFreqs popSize | m <- mutationModels ]
               bmStationaryGens  = map Trans.stationaryDistToGenerator bmStationaryDists

@@ -18,7 +18,6 @@ phylogenetic analysis.
 module RTree
   ( BranchLn
   , RTree(..)
-  , TreeType(..)
   , totalBrLn
   , getLeaves
   , toNewick
@@ -48,9 +47,15 @@ instance Functor (RTree a) where
   fmap _ (Leaf a) = Leaf a
   fmap f (Node a lb lc rb rc) = Node a (f lb) (fmap f lc) (f rb) (fmap f rc)
 
--- | Tree type. At the moment, ILS (incomplete lineage sorting) and Yule trees
--- are supported.
-data TreeType = ILS | Yule deriving (Eq, Read, Show)
+-- I tried to implement this but it is just too complicated (some trees are
+-- random).
+
+-- -- | The simulation scenario. It is a tree type with parameters.
+-- --
+-- -- At the moment, ILS (incomplete lineage sorting) and Yule trees are supported.
+-- data Scenario = ILS  { ilsTreeHeight  :: Double }
+--               | Yule { yuleTreeHeight :: Double
+--                      , yuleRate       :: Double }
 
 -- The total branch length; only works when the branch lengths are numbers.
 totalBrLn :: RTree a BranchLn -> BranchLn
@@ -82,17 +87,19 @@ ils th = Node "root"
                               (th/2.0 + th/10.0) (Leaf "s2"))
          th (Leaf "s1")
 
--- | Yule tree with height 'th' and speciation rate 'lam'.
+-- | Yule tree with height 'th' and reciprocal speciation rate 'recipRate'. Care
+-- has to be taken because the exponential is drawn with the reciprocal rate
+-- parameter.
 yule :: Double -> Double -> RVar (RTree String BranchLn)
-yule th lam = do
-  lBrLnSample <- exponential lam
-  rBrLnSample <- exponential lam
+yule th recipRate = do
+  lBrLnSample <- exponential recipRate
+  rBrLnSample <- exponential recipRate
   let lBrLen = if lBrLnSample >= th then th else lBrLnSample
       rBrLen = if rBrLnSample >= th then th else rBrLnSample
   lChild <- if lBrLnSample >= th then pure (Leaf "") else
-              yule (th - lBrLen) lam
+              yule (th - lBrLen) recipRate
   rChild <- if rBrLnSample >= th then pure (Leaf "") else
-              yule (th - rBrLen) lam
+              yule (th - rBrLen) recipRate
   return $ labelLeaves (Node "" lBrLen lChild rBrLen rChild)
 
 -- | Set all node states to the empty string "" and label the leaves from 0 to

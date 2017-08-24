@@ -23,7 +23,6 @@ import qualified Defaults              as Def
 import qualified DNAModel              as DNA
 import qualified Numeric.LinearAlgebra as L
 import           Options.Applicative
-import           RTree                 (TreeType)
 
 -- Convenience function to read in more complicated command line options with
 -- attoparsec and optparse
@@ -32,17 +31,34 @@ attoReadM :: A.Parser a -> ReadM a
 attoReadM p = eitherReader (A.parseOnly p . T.pack)
 
 data BMSimArgs = BMSimArgs
-  { outFileName    :: String
-  , stateFreqs     :: L.Vector L.R
-  , kappa          :: Double
-  , gammaShape     :: Maybe Double
-  , gammaNCat      :: Maybe Int
-  , popSize        :: Int
-  , heterozygosity :: Double
-  , treeHeight     :: Double
-  , treeType       :: TreeType
-  , nSites         :: Int
-  , seed           :: String }
+  { outFileName       :: String
+  , stateFreqs        :: L.Vector L.R
+  , kappa             :: Double
+  , gammaShape        :: Maybe Double
+  , gammaNCat         :: Maybe Int
+  , popSize           :: Int
+  , heterozygosity    :: Double
+  , treeHeight        :: Double
+  , treeType          :: String
+  , treeYuleRecipRate :: Maybe Double
+  , nSites            :: Int
+  , seed              :: String }
+
+-- Composition of all options.
+bmSimOptions :: Parser BMSimArgs
+bmSimOptions = BMSimArgs
+  <$> outFileNameOpt
+  <*> stateFreqsOpt
+  <*> kappaOpt
+  <*> gammaShapeOpt
+  <*> gammaNCatOpt
+  <*> popSizeOpt
+  <*> heterozygosityOpt
+  <*> treeHeightOpt
+  <*> treeTypeOpt
+  <*> treeYuleRecipRateOpt
+  <*> nSitesOpt
+  <*> seedOpt
 
 -- The impure IO action that reads the arguments and prints out help if needed.
 -- Maybe put this into Main.hs?
@@ -104,7 +120,7 @@ gammaNCatOpt :: Parser (Maybe Int)
 gammaNCatOpt = optional $ option auto
   ( long "gamma-ncat"
     <> metavar "INT"
-    <> help "Set the number of gamma rate categories (default: off)" )
+    <> help "Set the number of gamma rate categories (no default value)" )
 
 popSizeOpt :: Parser Int
 popSizeOpt = option auto
@@ -132,13 +148,19 @@ treeHeightOpt = option auto
     <> showDefault
     <> help "Set tree height [average number of substitutions]" )
 
-treeTypeOpt :: Parser TreeType
-treeTypeOpt = option auto
+treeTypeOpt :: Parser String
+treeTypeOpt = strOption
   ( long "tree-type"
     <> metavar "TYPE"
     <> value Def.treeType
     <> showDefault
-    <> help "Set tree type; ILS|Yule")
+    <> help "Set tree type; ILS or Yule")
+
+treeYuleRecipRateOpt :: Parser (Maybe Double)
+treeYuleRecipRateOpt = optional $ option auto
+  ( long "tree-yule-reciprocal-rate"
+  <> metavar "DOUBLE"
+  <> help "Set the reciprocal speciation rate of Yule tree (no default value)")
 
 nSitesOpt :: Parser Int
 nSitesOpt = option auto
@@ -157,18 +179,3 @@ seedOpt = strOption
     <> value "random"
     <> showDefault
     <> help "Set seed for the random number generator" )
-
--- Composition of all options.
-bmSimOptions :: Parser BMSimArgs
-bmSimOptions = BMSimArgs
-  <$> outFileNameOpt
-  <*> stateFreqsOpt
-  <*> kappaOpt
-  <*> gammaShapeOpt
-  <*> gammaNCatOpt
-  <*> popSizeOpt
-  <*> heterozygosityOpt
-  <*> treeHeightOpt
-  <*> treeTypeOpt
-  <*> nSitesOpt
-  <*> seedOpt
