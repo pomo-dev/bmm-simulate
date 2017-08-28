@@ -70,7 +70,7 @@ main = do
       treeType               = Args.treeType bmSimArgs
       maybeTreeYuleRecipRate = Args.treeYuleRecipRate bmSimArgs
       treeSubs = case treeType of
-                   "SIM"  -> Tree.ils treeHeight
+                   "ILS"  -> Tree.ils treeHeight
                    "Yule" -> fst $ sampleState (Tree.yule treeHeight recipRate) generator
                      where recipRate = fromMaybe (error "No Yule reciprocal speciation rate specified.")
                                        maybeTreeYuleRecipRate
