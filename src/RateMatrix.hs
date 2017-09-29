@@ -23,7 +23,8 @@ import qualified Tools                 as T
 -- A rate matrix is just a real matrix.
 type RateMatrix     = Matrix R
 -- A state is just an integer at the moment.
-type State          = Int
+newtype State       = State { fromState :: Int }
+                    deriving (Show,Read,Eq,Ord)
 -- A matrix of exchangeabilities, we have q = e * pi, where q is a rate matrix,
 -- e is the exchangeability matrix and pi is the diagonal matrix containing the
 -- stationary frequency distribution.

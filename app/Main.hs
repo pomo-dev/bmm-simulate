@@ -29,6 +29,7 @@ import           Numeric.LinearAlgebra
 import qualified RateMatrix                  as RM
 import qualified RTree                       as Tree
 import qualified System.Environment          as Sys
+import           System.IO
 import qualified Transition                  as Trans
 
 -- Automatic version information does not work with flycheck ... ahhhh.
@@ -36,7 +37,7 @@ import qualified Transition                  as Trans
 -- import           Paths_bmm_simulate        (version)
 -- import           Data.Version              (showVersion)
 
--- TODO: Read in tree type, specific mutation model.
+-- TODO: Read in specific mutation model.
 
 -- TODO: Use a different random number generator (e.g., MWC).
 
@@ -80,8 +81,9 @@ main = do
       treePrb    = Trans.branchLengthsToTransitionProbs bmRateMatrix treeBM
       treeGen    = Trans.treeProbMatrixToTreeGenerator treePrb
   -- Other options.
-  let nSites   = Args.nSites bmSimArgs
-      fileName = Args.outFileName bmSimArgs
+  let nSites       = Args.nSites bmSimArgs
+      fileName     = Args.outFileName bmSimArgs
+      treeFileName = fileName ++ ".tree"
   -- Output.
   putStrLn "Boundary mutation model simulator version 0.1.0.0."
   putStr "Command line: "
@@ -94,8 +96,10 @@ main = do
   putStrLn $ " (Generator: " ++ show generator ++ ")"
   putStr "Number of simulated sites: "
   print nSites
-  putStr "Output will be written to: "
+  putStr "Data will be written to: "
   print fileName
+  putStr "Species tree in mutations and frequency shifts will be written to:"
+  print treeFileName
 
   putStrLn ""
   putStrLn "--"
@@ -133,6 +137,11 @@ main = do
   putStr "Species tree in  mutations and frequency shifts: "
   putStrLn $ Tree.toNewick treeBM
 
+  -- Also output tree to special file.
+  treeH <- openFile treeFileName WriteMode
+  hPutStrLn treeH $ Tree.toNewick treeBM
+  hClose treeH
+
   putStrLn ""
   putStrLn "--"
   putStrLn "Performing simulation."
@@ -140,7 +149,7 @@ main = do
   fileHandle <- CF.open fileName
   CF.writeHeader fileHandle nSites popNames
   -- Simulation helpers.
-  let toStates = map (BS.idToState popSize . snd) :: [(a, RM.State)] -> [BS.State]
+  let toStates = map (BS.rmStateToBMState popSize . snd) :: [(a, RM.State)] -> [BS.State]
       writer   = CF.writeLine fileHandle "SIM"    :: CF.Pos -> CF.DataOneSite -> IO ()
   -- Simulation; loop over positions.
   let simAndPrintOneSite pos =

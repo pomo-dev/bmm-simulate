@@ -56,7 +56,7 @@ rate m s t
         rate' _ _ = error "Cannot compute rate between states."
 
 -- The transition rate from one state (index) to another.
-rateById :: MutModel -> BS.PopSize -> RM.State -> RM.State -> Double
+rateById :: MutModel -> BS.PopSize -> Int -> Int -> Double
 rateById m n i j = rate m s t
   where s = BS.idToState n i
         t = BS.idToState n j

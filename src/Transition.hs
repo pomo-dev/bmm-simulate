@@ -45,7 +45,7 @@ branchLengthsToTransitionProbs m = fmap (probMatrix m)
 -- a list of generators, see
 -- https://hackage.haskell.org/package/distribution-1.1.0.0/docs/Data-Distribution-Sample.html).
 jump :: (RandomGen g) => RM.State -> [D.Generator RM.State] -> Rand g RM.State
-jump s p = target
+jump (RM.State s) p = target
   where !target = D.getSample $ p !! s
 
 -- Perform N jumps from a given state and according to a transition probability
@@ -75,7 +75,7 @@ stationaryDistToGenerator f = fG
   -- TODO: This is a little complicated. I need to convert the vector to a list
   -- to be able to create a distribution.
   where !fL = L.toList f
-        !fD = D.fromList $ zip [0..] fL
+        !fD = D.fromList $ zip (map RM.State [0..]) fL
         !fG = D.fromDistribution fD
 
 treeProbMatrixToTreeGenerator :: Tree.RTree a ProbMatrix -> Tree.RTree a [D.Generator RM.State]
@@ -85,7 +85,7 @@ treeProbMatrixToTreeGenerator t = tG
     !tL = fmap L.toLists t
     -- A complicated double map. We need to create generators for each branch on
     -- the tree (fmap) and for each target state on each branch (map).
-    !tG = (fmap . map) (D.fromDistribution . D.fromList . zip ([0..] :: [RM.State])) tL
+    !tG = (fmap . map) (D.fromDistribution . D.fromList . zip (map RM.State [0..])) tL
 
 -- Simulate data (states at the leaves) for a tree with transition probabilities
 -- on its branches and with the stationary distribution of states at the root.

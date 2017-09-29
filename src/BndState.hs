@@ -24,6 +24,7 @@ module BndState
   , stateSpaceSize
   , stateId
   , idToState
+  , rmStateToBMState
   , connected
   ) where
 
@@ -128,8 +129,11 @@ stateSpaceSize n = k + k*(k-1) `div` 2 * (n-1)
 stateId :: State -> Maybe Int
 stateId s = elemIndex s (stateSpace $ getPopSize s)
 
-idToState :: PopSize -> RM.State -> State
+idToState :: PopSize -> Int -> State
 idToState n i = stateSpace n !! i
+
+rmStateToBMState :: PopSize -> RM.State -> State
+rmStateToBMState n (RM.State i) = idToState n i
 
 -- Check if two states are connected. By definition, states are NOT connected
 -- with themselves.
