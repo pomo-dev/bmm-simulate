@@ -30,7 +30,7 @@ import           Options.Applicative
 attoReadM :: A.Parser a -> ReadM a
 attoReadM p = eitherReader (A.parseOnly p . T.pack)
 
-data BMSimArgs = BMSimArgs
+data BMMArgs = BMMArgs
   { outFileName       :: String
   , stateFreqs        :: L.Vector L.R
   , kappa             :: Double
@@ -45,8 +45,8 @@ data BMSimArgs = BMSimArgs
   , seed              :: String }
 
 -- Composition of all options.
-bmSimOptions :: Parser BMSimArgs
-bmSimOptions = BMSimArgs
+bmSimOptions :: Parser BMMArgs
+bmSimOptions = BMMArgs
   <$> outFileNameOpt
   <*> stateFreqsOpt
   <*> kappaOpt
@@ -62,11 +62,12 @@ bmSimOptions = BMSimArgs
 
 -- The impure IO action that reads the arguments and prints out help if needed.
 -- Maybe put this into Main.hs?
-parseBMSimArgs :: IO BMSimArgs
-parseBMSimArgs = execParser $ info (helper <*> bmSimOptions)
-  ( fullDesc
+parseBMMArgs :: IO BMMArgs
+parseBMMArgs = execParser $
+  info (helper <*> bmSimOptions)
+  (fullDesc
     <> progDesc "Simulate count files using the boundary mutation model."
-    <> header "Boundary mutation model simulator")
+    <> header "Boundary mutation model simulator" )
 
 -- General things and options.
 outFileNameOpt :: Parser String
@@ -76,9 +77,8 @@ outFileNameOpt = strOption
     <> metavar "FILEPATH"
     <> value Def.outFileName
     <> showDefault
-    <> help "Write output to FILEPATH in counts file format")
+    <> help "Write output to FILEPATH in counts file format" )
 
--- TODO: Define default values at the top (probably move all this to Main.hs).
 -- Option to input the stationary frequencies of the mutation model.
 stateFreqsOpt :: Parser (L.Vector L.R)
 stateFreqsOpt = option (attoReadM parseStateFreq)
@@ -87,7 +87,7 @@ stateFreqsOpt = option (attoReadM parseStateFreq)
     <> metavar "DOUBLE,DOUBLE,DOUBLE,DOUBLE"
     <> value Def.stateFreqs
     <> showDefault
-    <> help "Set the stationary frequencies of the nucleotides in order A, C, G and T")
+    <> help "Set the stationary frequencies of the nucleotides in order A, C, G and T" )
 
 -- Read a stationary frequency of the form `pi_A,pi_C,pi_G,...`.
 parseStateFreq :: A.Parser DNA.StateFreqVec
@@ -95,7 +95,7 @@ parseStateFreq = do
   f <- L.vector . take nAlleles <$> A.sepBy A.double (A.char ',')
   if L.norm_1 f == 1.0 then return f
     else error $ "Stationary frequencies sum to " ++ show (L.norm_1 f) ++ " but should sum to 1.0."
-    -- TODO: Nucleotide count hard coded. See `BndState.nAlleles`. However, I cannot
+    -- Nucleotide count hard coded. See `BndState.nAlleles`. However, I cannot
     -- take different numbers depending on the mutation model because optparse has
     -- an applicative interface and not a monadic one. Also, allowing vectors of
     -- arbitrary size is undesirable because of meaningless error messages.
