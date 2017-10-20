@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 {- |
 Module      :  BMM simulator
 Description :  Simulate populations using the boundary mutation model
@@ -19,13 +21,13 @@ import qualified ArgParse                         as Args
 import qualified BndModel                         as BM
 import qualified BndState                         as BS
 import qualified CFWriter                         as CF
--- TODO: Use proper logger instead of a myriad of 'liftIO'.
--- import qualified Control.Monad.Logger        as Log
+import Control.Monad.Logger
 import           Control.Monad.Random.Strict
 import           Control.Monad.Trans.State.Strict
 import qualified Data.Distribution                as D
 import           Data.Maybe
 import           Data.Random
+import Data.Text (pack)
 import qualified DNAModel                         as DNA
 import qualified GammaRate                        as G
 import           Numeric.LinearAlgebra
@@ -43,8 +45,10 @@ data BMMParams = BMMParams
   , bmmArgs  :: Args.BMMArgs
   , gen      :: StdGen }
 
-type Simulation = StateT BMMParams IO
+type Simulation = LoggingT (StateT BMMParams IO)
 
+-- TODO: It would be good to initialize most of the variables from 'simulate'
+-- already in this function.
 getParams :: IO BMMParams
 getParams = do
   p    <- Sys.getProgName
@@ -55,9 +59,59 @@ getParams = do
   g    <- getStdGen
   return $ BMMParams p a bmmA g
 
+-- Use something like this for printing info. Problem: the nice variables
+-- defined in simulate are not accessible. Maybe include them in the data
+-- structure?
+-- printInfo :: BMMParams -> IO ()
+-- printInfo = do ...
+
+getCommandLineStr :: String -> [String] -> String
+getCommandLineStr n as = unlines
+  [ "Boundary mutation model simulator version 0.1.0.1."
+  , "Command line: " ++ n ++ " " ++ unwords as ]
+
+getGeneratorStr :: String -> StdGen -> String
+getGeneratorStr s g = unlines
+  [ "Seed: " ++ s ++ " (Generator: " ++ show g ++ ")" ]
+
+getHeadlineStr :: String -> String
+getHeadlineStr h = unlines
+  [ ""
+  , "--"
+  , h ]
+
+getFileNamesStr :: String -> String -> String
+getFileNamesStr d t = unlines
+  [ "Counts file name: " ++ d
+  , "Tree file name: " ++ t
+  , "Branch lengths are measured in mutations and frequency shifts." ]
+
+-- TODO: The underlying DNA substitution model needs to be reported separately.
+-- It's parameters should reside in a special data type.
+getBMMInfoStr :: Int
+              -> Double
+              -> BM.MutModel
+              -> RM.StationaryDist
+              -> Double
+              -> Maybe Double
+              -> Maybe [Double]
+              -> String
+getBMMInfoStr n h m f k ma mrs = unlines $
+  [ "Population size: " ++ show n
+  , "Heterozygosity: " ++ show h
+  , "Mutation model matrix: "
+  , show m
+  , "This corresponds to state frequencies (A, C, G, T): " ++ show f
+  , "And a kappa value of: " ++ show k
+  , "Gamma rate heterogeneity: " ++ show (isJust ma) ]
+  ++ gammaShape ++ gammaMeans
+  where
+    gammaShape = maybe [] (\a -> ["Shape parameter: " ++ show a]) ma
+    gammaMeans = maybe [] (\rs -> ["This corresponds to uniformly distributed rates: " ++ show rs]) mrs
+
 simulate :: Simulation ()
 simulate = do
-  params <- get
+  params <- lift get
   -- Mutation model.
   let bmmA       = bmmArgs params
       stateFreqs = Args.stateFreqs bmmA
@@ -93,48 +147,22 @@ simulate = do
   let nSites       = Args.nSites bmmA
       fileName     = Args.outFileName bmmA
       treeFileName = fileName ++ ".tree"
+
+  -- $(logError) $ pack "An error ocurred."
+
   -- Output.
-  liftIO $ putStrLn "Boundary mutation model simulator version 0.1.0.0."
-  liftIO $ putStr "Command line: "
-  liftIO $ putStrLn $ progName params ++ " " ++ unwords (args params)
+  liftIO . putStr $ getCommandLineStr (progName params) (args params)
 
-  liftIO $ putStrLn ""
-  liftIO $ putStrLn "--"
-  liftIO $ putStrLn "General options."
-  liftIO $ putStr $ "Seed: " ++ Args.seed bmmA
-  liftIO $ putStrLn $ " (Generator: " ++ show (gen params) ++ ")"
-  liftIO $ putStr "Number of simulated sites: "
-  liftIO $ print nSites
-  liftIO $ putStr "Data will be written to: "
-  liftIO $ print fileName
-  liftIO $ putStr "Species tree in mutations and frequency shifts will be written to:"
-  liftIO $ print treeFileName
+  liftIO . putStr $ getHeadlineStr "General options."
+  liftIO . putStr $ getGeneratorStr (Args.seed bmmA) (gen params)
+  liftIO . putStr $ getFileNamesStr fileName treeFileName
+  liftIO . putStrLn $ "Number of simulated sites: " ++ show nSites
 
-  liftIO $ putStrLn ""
-  liftIO $ putStrLn "--"
-  liftIO $ putStrLn "Boundary mutation model options."
-  liftIO $ putStr "Population size: "
-  liftIO $ print popSize
-  liftIO $ putStr "Heterozygosity: "
-  liftIO $ print heterozygosity
-  liftIO $ putStrLn "Mutation model matrix:"
-  liftIO $ print mutationModel
-  liftIO $ putStr "This corresponds to state frequencies (A, C, G, T): "
-  liftIO $ print stateFreqs
-  liftIO $ putStr "And a kappa value of: "
-  liftIO $ print kappa
-  liftIO $ putStr "Gamma rate heterogeneity: "
-  liftIO $ print $ isJust gammaShape
-  liftIO $ when (isJust gammaShape) $ do
-    putStr "Shape parameter: "
-    print $ fromJust gammaShape
-  liftIO $ when (isJust gammaMeans) $ do
-    putStr "This corresponds to uniformly distributed rates: "
-    print $ fromJust gammaMeans
+  liftIO . putStr $ getHeadlineStr "Boundary mutation model options."
+  liftIO . putStr $ getBMMInfoStr popSize heterozygosity mutationModel stateFreqs kappa gammaShape gammaMeans
 
-  liftIO $ putStrLn ""
-  liftIO $ putStrLn "--"
-  liftIO $ putStrLn "Tree options."
+  -- TODO: Data type for trees and info function.
+  liftIO . putStr $ getHeadlineStr "Tree options."
   liftIO $ putStrLn $ "Tree type: " ++ treeType
   liftIO $ putStr "Tree height in average number of substitutions: "
   liftIO $ print treeHeight
@@ -184,4 +212,4 @@ simulate = do
   liftIO $ putStrLn "Done."
 
 main :: IO BMMParams
-main = getParams >>= execStateT simulate
+main = getParams >>= execStateT (runStderrLoggingT simulate)

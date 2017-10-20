@@ -33,6 +33,7 @@ library
                      , distribution >= 1.1.1.0
                      , hmatrix >= 0.18.0.0
                      , integration >= 0.2.1
+                     , monad-logger
                      , optparse-applicative >= 0.13.2.0
                      , random >= 1.1
                      , random-fu >= 0.2.7.0
@@ -54,6 +55,7 @@ executable bmm-simulate
                      , distribution >= 1.1.1.0
                      , hmatrix >= 0.18.0.0
                      , integration >= 0.2.1
+                     , monad-logger
                      , optparse-applicative >= 0.13.2.0
                      , random >= 1.1
                      , random-fu >= 0.2.7.0
@@ -75,6 +77,7 @@ test-suite bmm-simulate-test
                      , distribution >= 1.1.1.0
                      , hmatrix >= 0.18.0.0
                      , integration >= 0.2.1
+                     , monad-logger
                      , optparse-applicative >= 0.13.2.0
                      , random >= 1.1
                      , random-fu >= 0.2.7.0
