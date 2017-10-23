@@ -5,7 +5,7 @@
 # -S: additional statistics
 # -h: memory heap profile
 # -H: set heap size
-stack exec bmm-simulate -- -s 1 -n 100000 +RTS -p -Sbmm-simulate.stat -h -H1G
+stack exec bmm-simulate -- -s 1 -n 500000 +RTS -p -Sbmm-simulate.stat -h -H1G
 
 # Create a graph of the memory heap profile.
 hp2ps -e10in -c bmm-simulate.hp
