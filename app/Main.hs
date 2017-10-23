@@ -146,12 +146,12 @@ simulate = do
   -- Tree.
   let treeHeight             = Args.treeHeight bmmA
       treeType               = Args.treeType bmmA
-      maybeTreeYuleRecipRate = Args.treeYuleRecipRate bmmA
+      maybeTreeYuleRate = Args.treeYuleRate bmmA
       (treeSubs, scenario)   = case treeType of
                    "ILS"  -> Tree.ils treeHeight
                    "Yule" -> fst $ sampleState (Tree.yule treeHeight recipRate) (gen params)
                      where recipRate = fromMaybe (error "No Yule reciprocal speciation rate specified.")
-                                       maybeTreeYuleRecipRate
+                                       maybeTreeYuleRate
                    _      -> error $ "Tree type not recognized: " ++ treeType
       treeBMM     = BM.scaleTreeToBMM popSize treeSubs
       popNames   = Tree.getLeaves treeBMM
