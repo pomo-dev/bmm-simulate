@@ -20,7 +20,7 @@ The implementation of the Markov process is more than basic and can be improved 
 
 module Transition where
 
-import           Control.Monad.Random.Strict hiding (fromList, toList)
+import           Control.Monad.Random.Strict hiding (fromList)
 import           Data.Distribution           hiding (toList)
 import           Numeric.LinearAlgebra       hiding (fromList)
 import           RateMatrix
@@ -75,8 +75,8 @@ populateAndFlattenTree (Node _ lp lc rp rc) s = liftM2 (++) (jumpDownBranch lp l
 
 stationaryDistToGenerator :: StationaryDist -> Generator State
 stationaryDistToGenerator f = fG
-  -- TODO: This is a little complicated. I need to convert the vector to a list
-  -- to be able to create a distribution.
+  -- This is a little complicated. I need to convert the vector to a list to be
+  -- able to create a distribution.
   where !fL = toList f
         !fD = fromList $ zip (map State [0..]) fL
         !fG = fromDistribution fD
@@ -92,9 +92,9 @@ treeProbMatrixToTreeGenerator t = tG
 
 -- Simulate data (states at the leaves) for a tree with transition probabilities
 -- on its branches and with the stationary distribution of states at the root.
--- This function has to be impure because the state at the root is randomly
--- chosen from the stationary distribution and the states at the nodes and
--- leaves are randomly chosen according to the transition probabilities.
+-- The state at the root is randomly chosen from the stationary distribution and
+-- the states at the nodes and leaves are randomly chosen according to the
+-- transition probabilities.
 simulateSite :: (MonadRandom m) =>
                 Generator State
              -> RTree a [Generator State]
