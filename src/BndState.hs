@@ -29,15 +29,15 @@ module BndState
   ) where
 
 import           Data.List
-import qualified DNAModel   as DNA
+import           DNAModel
 import qualified RateMatrix as RM
-import qualified Tools      as T
+import           Tools      (allValues)
 
 -- First, we need to define the state space.
 
 -- Alleles are just nucleotides at the moment. However, I want to keep the code
 -- such that it can be extended easily to codons or amino acids.
-type Allele = DNA.Nuc
+type Allele = Nuc
 -- The population size; has to be larger than one, otherwise there be dragons.
 type PopSize = Int
 -- The absolute frequency of an allele.
@@ -58,11 +58,11 @@ data State = Bnd { bndN :: PopSize
            deriving (Eq, Read)
 
 instance Show State where
-  show (Bnd n a) =  foldl1' (++) $ intersperse "," $ map toCounts T.allValues
+  show (Bnd n a) =  foldl1' (++) $ intersperse "," $ map toCounts allValues
     where toCounts b
             | a == b    = show n
             | otherwise = "0"
-  show (Ply n i a b) = foldl1' (++) $ intersperse "," $ map toCounts T.allValues
+  show (Ply n i a b) = foldl1' (++) $ intersperse "," $ map toCounts allValues
     where toCounts c
             | c == a    = show i
             | c == b    = show (n-i)
