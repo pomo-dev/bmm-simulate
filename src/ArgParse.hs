@@ -40,7 +40,7 @@ data BMMArgs = BMMArgs
   , heterozygosity    :: Double
   , treeHeight        :: Double
   , treeType          :: String
-  , treeYuleRecipRate :: Maybe Double
+  , treeYuleRate      :: Maybe Double
   , nSites            :: Int
   , seed              :: String }
 
@@ -56,7 +56,7 @@ bmSimOptions = BMMArgs
   <*> heterozygosityOpt
   <*> treeHeightOpt
   <*> treeTypeOpt
-  <*> treeYuleRecipRateOpt
+  <*> treeYuleRateOpt
   <*> nSitesOpt
   <*> seedOpt
 
@@ -156,11 +156,11 @@ treeTypeOpt = strOption
     <> showDefault
     <> help "Set tree type; ILS or Yule")
 
-treeYuleRecipRateOpt :: Parser (Maybe Double)
-treeYuleRecipRateOpt = optional $ option auto
-  ( long "tree-yule-reciprocal-rate"
+treeYuleRateOpt :: Parser (Maybe Double)
+treeYuleRateOpt = optional $ option auto
+  ( long "tree-yule-rate"
   <> metavar "DOUBLE"
-  <> help "Set the reciprocal speciation rate of Yule tree (no default value)")
+  <> help "Set the speciation rate of Yule tree (no default value)")
 
 nSitesOpt :: Parser Int
 nSitesOpt = option auto
