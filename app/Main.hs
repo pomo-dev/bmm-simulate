@@ -27,7 +27,7 @@ import           Control.Monad.Trans.State.Strict
 import qualified Data.Distribution                as D
 import           Data.Maybe
 import           Data.Random
-import Data.Text (pack)
+-- import Data.Text (pack)
 import qualified DNAModel                         as DNA
 import qualified GammaRate                        as G
 import           Numeric.LinearAlgebra
@@ -109,6 +109,20 @@ getBMMInfoStr n h m f k ma mrs = unlines $
     gammaShape = maybe [] (\a -> ["Shape parameter: " ++ show a]) ma
     gammaMeans = maybe [] (\rs -> ["This corresponds to uniformly distributed rates: " ++ show rs]) mrs
 
+getTreeStr :: Tree.Scenario
+           -> Tree.RTree String Tree.BranchLn
+           -> Tree.RTree String Tree.BranchLn
+           -> String
+getTreeStr s trSubs trBMM = show s ++ unlines
+  [ "Species tree in average number of substitutions: " ++ Tree.toNewick trSubs
+  , "Species tree in  mutations and frequency shifts: " ++ Tree.toNewick trBMM ]
+
+printTreeToFile :: Tree.RTree String Tree.BranchLn -> FilePath -> IO ()
+printTreeToFile tree fn = do
+  fh <- openFile fn WriteMode
+  hPutStrLn fh $ Tree.toNewick tree
+  hClose fh
+
 simulate :: Simulation ()
 simulate = do
   params <- lift get
@@ -133,15 +147,15 @@ simulate = do
   let treeHeight             = Args.treeHeight bmmA
       treeType               = Args.treeType bmmA
       maybeTreeYuleRecipRate = Args.treeYuleRecipRate bmmA
-      treeSubs = case treeType of
+      (treeSubs, scenario)   = case treeType of
                    "ILS"  -> Tree.ils treeHeight
                    "Yule" -> fst $ sampleState (Tree.yule treeHeight recipRate) (gen params)
                      where recipRate = fromMaybe (error "No Yule reciprocal speciation rate specified.")
                                        maybeTreeYuleRecipRate
                    _      -> error $ "Tree type not recognized: " ++ treeType
-      treeBM     = BM.scaleTreeToBMM popSize treeSubs
-      popNames   = Tree.getLeaves treeBM
-      treePrb    = Trans.branchLengthsToTransitionProbs bmRateMatrix treeBM
+      treeBMM     = BM.scaleTreeToBMM popSize treeSubs
+      popNames   = Tree.getLeaves treeBMM
+      treePrb    = Trans.branchLengthsToTransitionProbs bmRateMatrix treeBMM
       treeGen    = Trans.treeProbMatrixToTreeGenerator treePrb
   -- Other options.
   let nSites       = Args.nSites bmmA
@@ -161,27 +175,13 @@ simulate = do
   liftIO . putStr $ getHeadlineStr "Boundary mutation model options."
   liftIO . putStr $ getBMMInfoStr popSize heterozygosity mutationModel stateFreqs kappa gammaShape gammaMeans
 
-  -- TODO: Data type for trees and info function.
   liftIO . putStr $ getHeadlineStr "Tree options."
-  liftIO $ putStrLn $ "Tree type: " ++ treeType
-  liftIO $ putStr "Tree height in average number of substitutions: "
-  liftIO $ print treeHeight
-  liftIO $ when (treeType == "Yule") $ do
-    putStr "Reciprocal Yule speciation rate: "
-    print $ fromMaybe (error "No reciprocal Yule speciation rate specified.") maybeTreeYuleRecipRate
-  liftIO $ putStr "Species tree in average number of substitutions: "
-  liftIO $ putStrLn $ Tree.toNewick treeSubs
-  liftIO $ putStr "Species tree in  mutations and frequency shifts: "
-  liftIO $ putStrLn $ Tree.toNewick treeBM
+  liftIO . putStr $ getTreeStr scenario treeSubs treeBMM
 
   -- Also output tree to special file.
-  treeH <- liftIO $ openFile treeFileName WriteMode
-  liftIO $ hPutStrLn treeH $ Tree.toNewick treeBM
-  liftIO $ hClose treeH
+  liftIO $ printTreeToFile treeBMM treeFileName
 
-  liftIO $ putStrLn ""
-  liftIO $ putStrLn "--"
-  liftIO $ putStrLn "Performing simulation."
+  liftIO . putStr $ getHeadlineStr "Performing simulation."
   -- Prepare output file.
   fileHandle <- liftIO $ CF.open fileName
   liftIO $ CF.writeHeader fileHandle nSites popNames
@@ -204,9 +204,10 @@ simulate = do
               bmRateMatrices    = [ BM.normalizedRateMatrix m stateFreqs popSize | m <- mutationModels ]
               bmStationaryDists = [ BM.stationaryDist m stateFreqs popSize | m <- mutationModels ]
               bmStationaryGens  = map Trans.stationaryDistToGenerator bmStationaryDists
-              treesPrb          = [ Trans.branchLengthsToTransitionProbs b treeBM | b <- bmRateMatrices ]
+              treesPrb          = [ Trans.branchLengthsToTransitionProbs b treeBMM | b <- bmRateMatrices ]
               treesGen          = map Trans.treeProbMatrixToTreeGenerator treesPrb
   liftIO $ forM_ [1..nSites] simAndPrintOneSite
+
   -- Done.
   liftIO $ CF.close fileHandle
   liftIO $ putStrLn "Done."

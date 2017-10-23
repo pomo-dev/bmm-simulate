@@ -18,6 +18,7 @@ phylogenetic analysis.
 module RTree
   ( BranchLn
   , RTree(..)
+  , Scenario
   , totalBrLn
   , getLeaves
   , toNewick
@@ -47,15 +48,24 @@ instance Functor (RTree a) where
   fmap _ (Leaf a) = Leaf a
   fmap f (Node a lb lc rb rc) = Node a (f lb) (fmap f lc) (f rb) (fmap f rc)
 
--- I tried to implement this but it is just too complicated (some trees are
--- random).
+-- | The simulation scenario. It is a tree type with parameters.
+--
+-- At the moment, ILS (incomplete lineage sorting) and Yule trees are supported.
+data Scenario = ILS  { ilsTreeHeight  :: Double }
+              | Yule { yuleTreeHeight :: Double
+                     , yuleRate       :: Double }
 
--- -- | The simulation scenario. It is a tree type with parameters.
--- --
--- -- At the moment, ILS (incomplete lineage sorting) and Yule trees are supported.
--- data Scenario = ILS  { ilsTreeHeight  :: Double }
---               | Yule { yuleTreeHeight :: Double
---                      , yuleRate       :: Double }
+instance Show Scenario where
+  show s = case s of
+    ILS h -> unlines [ showType "ILS"
+                     , showHeight h ]
+    Yule h r -> unlines [ showType "Yule"
+                        , showHeight h
+                        , showRate r ]
+    -- _ -> error "Tree type not supported."
+    where showType tt = "Tree type: " ++ tt
+          showHeight th = "Tree height in average number of substitutions: " ++ show th
+          showRate rt = "Yule speciation rate: " ++ show rt
 
 -- The total branch length; only works when the branch lengths are numbers.
 totalBrLn :: RTree a BranchLn -> BranchLn
@@ -78,29 +88,32 @@ toNewick t = toNewick' t ++ ";"
 
 -- | The ILS tree with tree height 'th'.
 -- Newick representation for height 1.0: (((s4:0.5,s3:0.5):0.1,s2:0.6):0.4,s1:1.0);.
-ils :: Double -> RTree String BranchLn
-ils th = Node "root"
-         (th/2.0 - th/10.0) (Node "intern1"
-                              (th/10.0) (Node "intern2"
-                                          (th/2) (Leaf "s4")
-                                          (th/2) (Leaf "s3"))
-                              (th/2.0 + th/10.0) (Leaf "s2"))
-         th (Leaf "s1")
+ils :: Double -> (RTree String BranchLn, Scenario)
+ils th = (tree, ILS th)
+  where tree = Node "root"
+               (th/2.0 - th/10.0) (Node "intern1"
+                                   (th/10.0) (Node "intern2"
+                                              (th/2) (Leaf "s4")
+                                              (th/2) (Leaf "s3"))
+                                   (th/2.0 + th/10.0) (Leaf "s2"))
+               th (Leaf "s1")
 
--- | Yule tree with height 'th' and reciprocal speciation rate 'recipRate'. Care
--- has to be taken because the exponential is drawn with the reciprocal rate
--- parameter.
-yule :: Double -> Double -> RVar (RTree String BranchLn)
-yule th recipRate = do
-  lBrLnSample <- exponential recipRate
-  rBrLnSample <- exponential recipRate
-  let lBrLen = if lBrLnSample >= th then th else lBrLnSample
-      rBrLen = if rBrLnSample >= th then th else rBrLnSample
-  lChild <- if lBrLnSample >= th then pure (Leaf "") else
-              yule (th - lBrLen) recipRate
-  rChild <- if rBrLnSample >= th then pure (Leaf "") else
-              yule (th - rBrLen) recipRate
-  return $ labelLeaves (Node "" lBrLen lChild rBrLen rChild)
+-- | Yule tree with height 'th' and speciation rate 'rate'.
+yule :: Double -> Double -> RVar (RTree String BranchLn, Scenario)
+yule th rate = do
+  let scenario = Yule th rate
+  tree <- yule' th rate
+  return (tree, scenario)
+  where yule' h r = do
+          lBrLnSample <- exponential (1.0/r)
+          rBrLnSample <- exponential (1.0/r)
+          let lBrLen = if lBrLnSample >= h then h else lBrLnSample
+              rBrLen = if rBrLnSample >= h then h else rBrLnSample
+          lChild <- if lBrLnSample >= h then pure (Leaf "") else
+                      yule' (h - lBrLen) r
+          rChild <- if rBrLnSample >= h then pure (Leaf "") else
+                      yule' (h - rBrLen) r
+          return $ labelLeaves (Node "" lBrLen lChild rBrLen rChild)
 
 -- | Set all node states to the empty string "" and label the leaves from 0 to
 -- the number of leaves.
