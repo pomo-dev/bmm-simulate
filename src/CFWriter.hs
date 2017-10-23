@@ -17,7 +17,7 @@ size, etc.), write the data to file using counts file format.
 
 module CFWriter where
 
-import           BndState  as BS
+import           BndState
 import           System.IO
 
 -- The number of populations (leafs) on the tree.
@@ -43,7 +43,7 @@ type Chrom = String
 type Pos   = Int
 
 -- The set of boundary states for one site.
-type DataOneSite = [BS.State]
+type DataOneSite = [State]
 
 -- TODO: Pretty print (e.g., fixed width of CHR and POS columns).
 -- Get a data line in the counts file.

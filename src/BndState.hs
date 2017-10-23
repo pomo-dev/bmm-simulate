@@ -92,19 +92,19 @@ instance Ord State where
     -- Now we can be sure that both nucleotides are the same.
     | otherwise               = i <= j
 
-validBState :: State -> Bool
-validBState (Bnd n _)
+isValidState :: State -> Bool
+isValidState (Bnd n _)
   | n <= 1    = False
   | otherwise = True
-validBState (Ply n i a b)
+isValidState (Ply n i a b)
   | n <= 1    = False
   | a >= b    = False
   | i <= 0    = False
   | i >= n    = False
   | otherwise = True
 
-filterValidBState :: [State] -> [State]
-filterValidBState = filter validBState
+filterValidStates :: [State] -> [State]
+filterValidStates = filter isValidState
 
 getPopSize :: State -> PopSize
 getPopSize (Bnd n _)     = n
@@ -114,7 +114,7 @@ getPopSize (Ply n _ _ _) = n
 stateSpace :: PopSize -> [State]
 stateSpace n
   | n <= 1    = error "The population size has to be larger than one."
-  | otherwise = sort $ filterValidBState ( allBndStates ++ allPlyStates )
+  | otherwise = sort $ filterValidStates ( allBndStates ++ allPlyStates )
   where allBndStates = [ Bnd n a |
                          a <- [minBound .. maxBound] :: [Allele] ]
         allPlyStates = [ Ply n i a b |
@@ -141,7 +141,7 @@ connected :: State -> State -> Bool
 connected s t = s `elem` getNeighbors t
 
 getNeighbors :: State -> [State]
-getNeighbors (Bnd n a) = filterValidBState allNeighbors
+getNeighbors (Bnd n a) = filterValidStates allNeighbors
   where allNeighbors = [ Ply n (n-1) a b |
                          b <- [minBound .. maxBound] :: [Allele] ]
                        ++

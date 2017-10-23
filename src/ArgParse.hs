@@ -18,31 +18,34 @@ module ArgParse where
 
 import qualified Data.Attoparsec.Text  as A
 import           Data.Semigroup        ((<>))
-import qualified Data.Text             as T
+import           Data.Text             (pack)
 import qualified Defaults              as Def
-import qualified DNAModel              as DNA
-import qualified Numeric.LinearAlgebra as L
+import           DNAModel              (StateFreqVec)
+import           Numeric.LinearAlgebra ( Vector
+                                       , R
+                                       , norm_1
+                                       , vector)
 import           Options.Applicative
 
 -- Convenience function to read in more complicated command line options with
 -- attoparsec and optparse
 -- (https://github.com/pcapriotti/optparse-applicative#option-readers).
 attoReadM :: A.Parser a -> ReadM a
-attoReadM p = eitherReader (A.parseOnly p . T.pack)
+attoReadM p = eitherReader (A.parseOnly p . pack)
 
 data BMMArgs = BMMArgs
-  { outFileName       :: String
-  , stateFreqs        :: L.Vector L.R
-  , kappa             :: Double
-  , gammaShape        :: Maybe Double
-  , gammaNCat         :: Maybe Int
-  , popSize           :: Int
-  , heterozygosity    :: Double
-  , treeHeight        :: Double
-  , treeType          :: String
-  , treeYuleRate      :: Maybe Double
-  , nSites            :: Int
-  , seed              :: String }
+  { outFileName    :: String
+  , stateFreqs     :: Vector R
+  , kappa          :: Double
+  , gammaShape     :: Maybe Double
+  , gammaNCat      :: Maybe Int
+  , popSize        :: Int
+  , heterozygosity :: Double
+  , treeHeight     :: Double
+  , treeType       :: String
+  , treeYuleRate   :: Maybe Double
+  , nSites         :: Int
+  , seed           :: String }
 
 -- Composition of all options.
 bmSimOptions :: Parser BMMArgs
@@ -80,7 +83,7 @@ outFileNameOpt = strOption
     <> help "Write output to FILEPATH in counts file format" )
 
 -- Option to input the stationary frequencies of the mutation model.
-stateFreqsOpt :: Parser (L.Vector L.R)
+stateFreqsOpt :: Parser (Vector R)
 stateFreqsOpt = option (attoReadM parseStateFreq)
   ( long "freq"
     <> short 'f'
@@ -90,11 +93,11 @@ stateFreqsOpt = option (attoReadM parseStateFreq)
     <> help "Set the stationary frequencies of the nucleotides in order A, C, G and T" )
 
 -- Read a stationary frequency of the form `pi_A,pi_C,pi_G,...`.
-parseStateFreq :: A.Parser DNA.StateFreqVec
+parseStateFreq :: A.Parser StateFreqVec
 parseStateFreq = do
-  f <- L.vector . take nAlleles <$> A.sepBy A.double (A.char ',')
-  if L.norm_1 f == 1.0 then return f
-    else error $ "Stationary frequencies sum to " ++ show (L.norm_1 f) ++ " but should sum to 1.0."
+  f <- vector . take nAlleles <$> A.sepBy A.double (A.char ',')
+  if norm_1 f == 1.0 then return f
+    else error $ "Stationary frequencies sum to " ++ show (norm_1 f) ++ " but should sum to 1.0."
     -- Nucleotide count hard coded. See `BndState.nAlleles`. However, I cannot
     -- take different numbers depending on the mutation model because optparse has
     -- an applicative interface and not a monadic one. Also, allowing vectors of
