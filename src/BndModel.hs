@@ -15,9 +15,15 @@ This module defines the transition rate matrix of the boundary mutation model.
 -}
 
 module BndModel
+  ( normalizeToTheta
+  , normalizedRateMatrix
+  , stationaryDist
+  , scaleTreeToBMM
+  , getBMMInfoStr )
   where
 
 import           BndState
+import           Data.Maybe
 import           DNAModel              hiding (rateMatrix)
 import           Numeric.LinearAlgebra
 import           RateMatrix            hiding (State)
@@ -25,13 +31,15 @@ import           RTree
 import           Tools
 
 -- The boundary mutation models uses an underlying mutation model.
-type MutModel         = RateMatrix
+type MutModel = DNAModel
 -- Let's just give rate matrices of the boundary mutation model a special name.
-type BndMutModel      = RateMatrix
+data BMModel  = BMModel { bmmRateMatrix :: RateMatrix
+                        , bmmMutMatrix  :: MutModel
+                        , bmmPopSize    :: PopSize }
 
 -- First we need to define a mutation model.
 mutRate :: MutModel -> Allele -> Allele -> Double
-mutRate m a b = m ! i ! j
+mutRate (DNAModel m _) a b = m ! i ! j
   where i = fromEnum a
         j = fromEnum b
 
@@ -67,11 +75,11 @@ rateById m n i j = rate m s t
 rateByDouble :: MutModel -> PopSize -> Double -> Double -> Double
 rateByDouble m n x y = rateById m n (round x) (round y)
 
-rateMatrix :: MutModel -> PopSize -> BndMutModel
+rateMatrix :: MutModel -> PopSize -> RateMatrix
 rateMatrix m n = setDiagonal $ build (s,s) (rateByDouble m n)
   where s = stateSpaceSize n
 
-normalizedRateMatrix :: MutModel -> StateFreqVec -> PopSize -> BndMutModel
+normalizedRateMatrix :: MutModel -> StateFreqVec -> PopSize -> RateMatrix
 normalizedRateMatrix m f n = normalizeRates f' m'
   where m' = rateMatrix m n
         f' = stationaryDist m f n
@@ -81,7 +89,7 @@ type Heterozygosity = Double
 
 -- Calculate the heterozygosity at stationarity.
 theta :: MutModel -> StateFreqVec -> Heterozygosity
-theta m f = f <.> rDiagZero #> f
+theta (DNAModel m _) f = f <.> rDiagZero #> f
   where e         = toExchMatrix m f
         (r, _)    = matrixSeparateSymSkew e
         -- The summation excludes the diagonal (a /= b).
@@ -122,10 +130,11 @@ stationaryDist m f n = scale (1.0/norm m f n) $
 -- Normalize the mutation coefficients such that the heterozygosity matches a
 -- given level (see Eq. 12.14 in my thesis).
 normalizeToTheta :: MutModel -> StateFreqVec -> PopSize -> Heterozygosity -> MutModel
-normalizeToTheta m f n h = scale (h / (t * (1.0 - c * h))) m
+normalizeToTheta mo@(DNAModel m _) f n h =
+  mo { dnaRateMatrix = scale (h / (t * (1.0 - c * h))) m }
   where
     -- The heterozygosity of the boundary mutation model.
-    t = theta m f
+    t = theta mo f
     -- The branch length multiplicative factor introduced by the coalescent.
     c = harmonic (n-1)
 
@@ -137,3 +146,21 @@ normalizeToTheta m f n h = scale (h / (t * (1.0 - c * h))) m
 scaleTreeToBMM :: PopSize -> RTree a Double -> RTree a Double
 scaleTreeToBMM n = fmap (* nSq)
   where nSq = fromIntegral n ** 2
+
+getBMMInfoStr :: Int
+              -> Double
+              -> MutModel
+              -> StationaryDist
+              -> Maybe Double
+              -> Maybe [Double]
+              -> String
+getBMMInfoStr n h m f ma mrs = unlines $
+  [ "Population size: " ++ show n
+  , "Heterozygosity: " ++ show h
+  , "Mutation model:"
+  , getDNAModelInfoStr m f
+  , "Gamma rate heterogeneity: " ++ show (isJust ma) ] ++
+  gammaShape ++ gammaMeans
+  where
+    gammaShape = maybe [] (\a -> ["Shape parameter: " ++ show a]) ma
+    gammaMeans = maybe [] (\rs -> ["This corresponds to uniformly distributed rates: " ++ show rs]) mrs

@@ -24,6 +24,7 @@ module RTree
   , toNewick
   , ils
   , yule
+  , getTreeStr
   ) where
 
 import Data.Random
@@ -125,3 +126,11 @@ labelLeaves' (Leaf _) n = (Leaf (show n), n+1)
 labelLeaves' (Node _ lB lC rB rC) n = (Node "" lB lC' rB rC', n'')
   where (lC', n' ) = labelLeaves' lC n
         (rC', n'') = labelLeaves' rC n'
+
+getTreeStr :: Scenario
+           -> RTree String BranchLn
+           -> RTree String BranchLn
+           -> String
+getTreeStr s trSubs trBMM = show s ++ unlines
+  [ "Species tree in average number of substitutions: " ++ toNewick trSubs
+  , "Species tree in  mutations and frequency shifts: " ++ toNewick trBMM ]

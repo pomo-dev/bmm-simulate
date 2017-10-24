@@ -10,7 +10,7 @@ Maintainer  :  dominik.schrempf@gmail.com
 Stability   :  unstable
 Portability :  non-portable (not tested)
 
-Enables simulation of sequence data for a predefined phylogeny using the
+Enables simulation of sequence data for a different phylogenies using the
 boundary mutation model. The output is a counts file.
 
 * Changelog
@@ -85,35 +85,6 @@ getFileNamesStr d t = unlines
   , "Tree file name: " ++ t
   , "Branch lengths are measured in mutations and frequency shifts." ]
 
-getBMMInfoStr :: Int
-              -> Double
-              -> BMM.MutModel
-              -> RM.StationaryDist
-              -> Double
-              -> Maybe Double
-              -> Maybe [Double]
-              -> String
-getBMMInfoStr n h m f k ma mrs = unlines $
-  [ "Population size: " ++ show n
-  , "Heterozygosity: " ++ show h
-  , "Mutation model matrix: "
-  , show m
-  , "This corresponds to state frequencies (A, C, G, T): " ++ show f
-  , "And a kappa value of: " ++ show k
-  , "Gamma rate heterogeneity: " ++ show (isJust ma) ]
-  ++ gammaShape ++ gammaMeans
-  where
-    gammaShape = maybe [] (\a -> ["Shape parameter: " ++ show a]) ma
-    gammaMeans = maybe [] (\rs -> ["This corresponds to uniformly distributed rates: " ++ show rs]) mrs
-
-getTreeStr :: Tree.Scenario
-           -> Tree.RTree String Tree.BranchLn
-           -> Tree.RTree String Tree.BranchLn
-           -> String
-getTreeStr s trSubs trBMM = show s ++ unlines
-  [ "Species tree in average number of substitutions: " ++ Tree.toNewick trSubs
-  , "Species tree in  mutations and frequency shifts: " ++ Tree.toNewick trBMM ]
-
 printTreeToFile :: Tree.RTree String Tree.BranchLn -> FilePath -> IO ()
 printTreeToFile tree fn = do
   fh <- openFile fn WriteMode
@@ -135,9 +106,8 @@ simulate = do
   -- Boundary mutation model.
   let popSize          = Args.popSize bmmA
       heterozygosity   = Args.heterozygosity bmmA
-  -- TODO: This may be hidden in BndModel.hs, so that it is cleaner here.
       mutationModel    = BMM.normalizeToTheta
-        (DNA.dnaRateMatrix hkyModel) stateFreqs popSize heterozygosity
+        hkyModel stateFreqs popSize heterozygosity
       bmRateMatrix     = BMM.normalizedRateMatrix mutationModel stateFreqs popSize
       bmStationaryDist = BMM.stationaryDist mutationModel stateFreqs popSize
       bmStationaryGen  = Trans.stationaryDistToGenerator bmStationaryDist
@@ -171,10 +141,10 @@ simulate = do
   liftIO . putStrLn $ "Number of simulated sites: " ++ show nSites
 
   liftIO . putStr $ getHeadlineStr "Boundary mutation model options."
-  liftIO . putStr $ getBMMInfoStr popSize heterozygosity mutationModel stateFreqs kappa gammaShape gammaMeans
+  liftIO . putStr $ BMM.getBMMInfoStr popSize heterozygosity mutationModel stateFreqs gammaShape gammaMeans
 
   liftIO . putStr $ getHeadlineStr "Tree options."
-  liftIO . putStr $ getTreeStr scenario treeSubs treeBMM
+  liftIO . putStr $ Tree.getTreeStr scenario treeSubs treeBMM
 
   -- Also output tree to special file.
   liftIO $ printTreeToFile treeBMM treeFileName
@@ -198,7 +168,8 @@ simulate = do
         where nCat              = fromMaybe (error "The number of gamma rate categories was not given.") gammaNCat
               uniformGen        = D.fromDistribution $ D.uniform [0 .. nCat - 1]
               means             = fromMaybe (error "No gamma shape parameter given.") gammaMeans
-              mutationModels    = [ scale s mutationModel | s <- means ]
+              scaleMutModel s m = m { DNA.dnaRateMatrix = scale s (DNA.dnaRateMatrix m) }
+              mutationModels    = [ scaleMutModel s mutationModel | s <- means ]
               bmRateMatrices    = [ BMM.normalizedRateMatrix m stateFreqs popSize | m <- mutationModels ]
               bmStationaryDists = [ BMM.stationaryDist m stateFreqs popSize | m <- mutationModels ]
               bmStationaryGens  = map Trans.stationaryDistToGenerator bmStationaryDists

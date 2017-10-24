@@ -29,6 +29,10 @@ data Nuc = A | C | G | T deriving (Eq, Show, Read, Ord, Bounded, Enum)
 newtype DNAModelSpec = HKY Double -- HKY model with transition to transversion
                                   -- ratio kappa.
 
+-- TODO: Is too much work at the moment. Because log file parser also has to be changed.
+-- instance Show DNAModelSpec where
+--   show (HKY k) = "HKY substitution model"
+
 -- A rate matrix of a DNA models is called DNAModel.
 data DNAModel = DNAModel { dnaRateMatrix  :: RateMatrix
                          , dnaModelParams :: DNAModelSpec }
@@ -52,3 +56,14 @@ rateMatrix f s@(HKY _) = DNAModel rm s
   where exch = exchangeabilityMatrix s
         rm   = normalizeRates f $ setDiagonal $ exch <> diag f
 -- rateMatrix _ _       = error "Model not yet supported."
+
+getDNAModelInfoStr :: DNAModel -> StateFreqVec -> String
+getDNAModelInfoStr (DNAModel m s) f = case s of
+       (HKY k) -> unlines $
+         ["HKY model."] ++
+         reportMatrix ++
+         reportStateFreqVec ++
+         [ "And a kappa value of: " ++ show k ]
+       -- _ -> error "Model not yet supported."
+       where reportMatrix = [ "Rate matrix:", show m]
+             reportStateFreqVec = [ "This corresponds to state frequencies (A, C, G, T): " ++ show f ]
