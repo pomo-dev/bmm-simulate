@@ -18,7 +18,7 @@ module BndModel
   where
 
 import           BndState
-import           DNAModel
+import           DNAModel              hiding (rateMatrix)
 import           Numeric.LinearAlgebra
 import           RateMatrix            hiding (State)
 import           RTree

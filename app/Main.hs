@@ -18,8 +18,8 @@ boundary mutation model. The output is a counts file.
 -}
 
 import qualified ArgParse                         as Args
-import qualified BndModel                         as BM
-import qualified BndState                         as BS
+import qualified BndModel                         as BMM
+import qualified BndState                         as BMS
 import qualified CFWriter                         as CF
 import Control.Monad.Logger
 import           Control.Monad.Random.Strict
@@ -47,8 +47,7 @@ data BMMParams = BMMParams
 
 type Simulation = LoggingT (StateT BMMParams IO)
 
--- TODO: It would be good to initialize most of the variables from 'simulate'
--- already in this function.
+-- | Initialize the parameters for the simulator (command line arguments etc.).
 getParams :: IO BMMParams
 getParams = do
   p    <- Sys.getProgName
@@ -86,11 +85,9 @@ getFileNamesStr d t = unlines
   , "Tree file name: " ++ t
   , "Branch lengths are measured in mutations and frequency shifts." ]
 
--- TODO: The underlying DNA substitution model needs to be reported separately.
--- It's parameters should reside in a special data type.
 getBMMInfoStr :: Int
               -> Double
-              -> BM.MutModel
+              -> BMM.MutModel
               -> RM.StationaryDist
               -> Double
               -> Maybe Double
@@ -130,7 +127,7 @@ simulate = do
   let bmmA       = bmmArgs params
       stateFreqs = Args.stateFreqs bmmA
       kappa      = Args.kappa bmmA
-      hkyModel   = DNA.rateMatrixHKY stateFreqs kappa
+      hkyModel   = DNA.rateMatrix stateFreqs (DNA.HKY kappa)
   -- Gamma rate heterogeneity, handled with the Maybe monad.
   let gammaNCat  = Args.gammaNCat bmmA
       gammaShape = Args.gammaShape bmmA
@@ -138,10 +135,11 @@ simulate = do
   -- Boundary mutation model.
   let popSize          = Args.popSize bmmA
       heterozygosity   = Args.heterozygosity bmmA
-      mutationModel    = BM.normalizeToTheta
-        hkyModel stateFreqs popSize heterozygosity
-      bmRateMatrix     = BM.normalizedRateMatrix mutationModel stateFreqs popSize
-      bmStationaryDist = BM.stationaryDist mutationModel stateFreqs popSize
+  -- TODO: This may be hidden in BndModel.hs, so that it is cleaner here.
+      mutationModel    = BMM.normalizeToTheta
+        (DNA.dnaRateMatrix hkyModel) stateFreqs popSize heterozygosity
+      bmRateMatrix     = BMM.normalizedRateMatrix mutationModel stateFreqs popSize
+      bmStationaryDist = BMM.stationaryDist mutationModel stateFreqs popSize
       bmStationaryGen  = Trans.stationaryDistToGenerator bmStationaryDist
   -- Tree.
   let treeHeight             = Args.treeHeight bmmA
@@ -153,7 +151,7 @@ simulate = do
                      where recipRate = fromMaybe (error "No Yule reciprocal speciation rate specified.")
                                        maybeTreeYuleRate
                    _      -> error $ "Tree type not recognized: " ++ treeType
-      treeBMM     = BM.scaleTreeToBMM popSize treeSubs
+      treeBMM     = BMM.scaleTreeToBMM popSize treeSubs
       popNames   = Tree.getLeaves treeBMM
       treePrb    = Trans.branchLengthsToTransitionProbs bmRateMatrix treeBMM
       treeGen    = Trans.treeProbMatrixToTreeGenerator treePrb
@@ -186,7 +184,7 @@ simulate = do
   fileHandle <- liftIO $ CF.open fileName
   liftIO $ CF.writeHeader fileHandle nSites popNames
   -- Simulation helpers.
-  let toStates = map (BS.rmStateToBMState popSize . snd) :: [(a, RM.State)] -> [BS.State]
+  let toStates = map (BMS.rmStateToBMState popSize . snd) :: [(a, RM.State)] -> [BMS.State]
       writer   = CF.writeLine fileHandle "SIM"    :: CF.Pos -> CF.DataOneSite -> IO ()
   -- Simulation; loop over positions.
   let simAndPrintOneSite pos =
@@ -201,8 +199,8 @@ simulate = do
               uniformGen        = D.fromDistribution $ D.uniform [0 .. nCat - 1]
               means             = fromMaybe (error "No gamma shape parameter given.") gammaMeans
               mutationModels    = [ scale s mutationModel | s <- means ]
-              bmRateMatrices    = [ BM.normalizedRateMatrix m stateFreqs popSize | m <- mutationModels ]
-              bmStationaryDists = [ BM.stationaryDist m stateFreqs popSize | m <- mutationModels ]
+              bmRateMatrices    = [ BMM.normalizedRateMatrix m stateFreqs popSize | m <- mutationModels ]
+              bmStationaryDists = [ BMM.stationaryDist m stateFreqs popSize | m <- mutationModels ]
               bmStationaryGens  = map Trans.stationaryDistToGenerator bmStationaryDists
               treesPrb          = [ Trans.branchLengthsToTransitionProbs b treeBMM | b <- bmRateMatrices ]
               treesGen          = map Trans.treeProbMatrixToTreeGenerator treesPrb

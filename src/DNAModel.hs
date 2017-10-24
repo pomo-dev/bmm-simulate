@@ -20,27 +20,35 @@ module DNAModel
   where
 
 import           Numeric.LinearAlgebra
-import qualified RateMatrix            as RM
+import           RateMatrix
 
 -- The nucleotides.
 data Nuc = A | C | G | T deriving (Eq, Show, Read, Ord, Bounded, Enum)
 
+-- The DNA model specifications. E.g., for the HKY model, we only have kappa.
+newtype DNAModelSpec = HKY Double -- HKY model with transition to transversion
+                                  -- ratio kappa.
+
 -- A rate matrix of a DNA models is called DNAModel.
-type DNAModel      = RM.RateMatrix
+data DNAModel = DNAModel { dnaRateMatrix  :: RateMatrix
+                         , dnaModelParams :: DNAModelSpec }
+
 -- A stationary distribution of a DNA model is also called stationary frequency
 -- vector.
-type StateFreqVec  = RM.StationaryDist
+type StateFreqVec  = StationaryDist
 
--- The HKY model.
-type Kappa = Double
--- The matrix of exchangeabilities in the HKY model.
-exchangeabilityMatrixHKY :: Kappa -> Matrix R
-exchangeabilityMatrixHKY k = (4><4)
+-- The matrix of exchangeabilities.
+exchangeabilityMatrix :: DNAModelSpec -> Matrix R
+exchangeabilityMatrix (HKY k) = (4><4)
   [ 0.0, 1.0,   k, 1.0
   , 1.0, 0.0, 1.0, k
   ,   k, 1.0, 0.0, 1.0
   , 1.0,   k, 1.0, 0.0 ]
+-- exchangeabilityMatrix _     = error "Model not yet supported."
+
 -- HKY model mutation matrix normalized so that one mutation happens per unit time.
-rateMatrixHKY :: StateFreqVec -> Kappa -> DNAModel
-rateMatrixHKY f k = RM.normalizeRates f $ RM.setDiagonal $ exch <> diag f
-  where exch = exchangeabilityMatrixHKY k
+rateMatrix :: StateFreqVec -> DNAModelSpec -> DNAModel
+rateMatrix f s@(HKY _) = DNAModel rm s
+  where exch = exchangeabilityMatrix s
+        rm   = normalizeRates f $ setDiagonal $ exch <> diag f
+-- rateMatrix _ _       = error "Model not yet supported."
