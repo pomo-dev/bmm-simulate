@@ -32,10 +32,10 @@ import           Tools
 
 -- The boundary mutation models uses an underlying mutation model.
 type MutModel = DNAModel
--- Let's just give rate matrices of the boundary mutation model a special name.
-data BMModel  = BMModel { bmmRateMatrix :: RateMatrix
-                        , bmmMutMatrix  :: MutModel
-                        , bmmPopSize    :: PopSize }
+-- -- Let's just give rate matrices of the boundary mutation model a special name.
+-- data BMModel  = BMModel { bmmRateMatrix :: RateMatrix
+--                         , bmmMutMatrix  :: MutModel
+--                         , bmmPopSize    :: PopSize }
 
 -- First we need to define a mutation model.
 mutRate :: MutModel -> Allele -> Allele -> Double
@@ -79,62 +79,66 @@ rateMatrix :: MutModel -> PopSize -> RateMatrix
 rateMatrix m n = setDiagonal $ build (s,s) (rateByDouble m n)
   where s = stateSpaceSize n
 
-normalizedRateMatrix :: MutModel -> StateFreqVec -> PopSize -> RateMatrix
-normalizedRateMatrix m f n = normalizeRates f' m'
+normalizedRateMatrix :: MutModel -> PopSize -> RateMatrix
+normalizedRateMatrix m n = normalizeRates f' m'
   where m' = rateMatrix m n
-        f' = stationaryDist m f n
+        f  = dnaModelSpecGetStateFreqVec (dnaModelSpec m)
+        f' = stationaryDist m n
 
 -- Define a heterozygosity to make function definitions clearer.
 type Heterozygosity = Double
 
 -- Calculate the heterozygosity at stationarity.
-theta :: MutModel -> StateFreqVec -> Heterozygosity
-theta (DNAModel m _) f = f <.> rDiagZero #> f
-  where e         = toExchMatrix m f
+theta :: MutModel -> Heterozygosity
+theta (DNAModel m s) = f <.> rDiagZero #> f
+  where f         = dnaModelSpecGetStateFreqVec s
+        e         = toExchMatrix m f
         (r, _)    = matrixSeparateSymSkew e
         -- The summation excludes the diagonal (a /= b).
         rDiagZero = matrixSetDiagToZero r
 
 -- The normalization constant of the stationary distribution.
-norm :: MutModel -> StateFreqVec -> PopSize -> Double
-norm m f n = 1.0 + harmonic (n-1) * theta m f
+norm :: MutModel -> PopSize -> Double
+norm m n = 1.0 + harmonic (n-1) * theta m
 
 -- Get entries of the stationary measure (not normalized) for a boundary model state.
-stationaryMeasEntry :: MutModel -> StateFreqVec -> State -> Double
-stationaryMeasEntry _ f (Bnd _ a)     = piA
-  where piA = f ! fromEnum a
-stationaryMeasEntry m f (Ply n i a b) = piA * mAB / (fromIntegral n - fromIntegral i)
-                                           + piB * mBA / fromIntegral i
-  where piA = stateFreq f a
-        mAB = mutRate m a b
-        piB = stateFreq f b
-        mBA = mutRate m b a
+stationaryMeasEntry :: MutModel -> State -> Double
+stationaryMeasEntry m s =
+  let f   = dnaModelSpecGetStateFreqVec (dnaModelSpec m) in
+  case s of
+    (Bnd _ a)     -> f ! fromEnum a
+    (Ply n i a b) -> piA * mAB / (fromIntegral n - fromIntegral i)
+                                      + piB * mBA / fromIntegral i
+      where piA = stateFreq f a
+            mAB = mutRate m a b
+            piB = stateFreq f b
+            mBA = mutRate m b a
 
--- Only use this function when accessing single elements of the stationary
--- distribution. Otherwise, computation of the norm is unnecessarily repeated.
-stationaryDistEntry :: MutModel -> StateFreqVec -> PopSize -> State -> Double
-stationaryDistEntry m f n s = stationaryMeasEntry m f s / norm m f n
+-- -- Only use this function when accessing single elements of the stationary
+-- -- distribution. Otherwise, computation of the norm is unnecessarily repeated.
+-- stationaryDistEntry :: MutModel -> PopSize -> State -> Double
+-- stationaryDistEntry m n s = stationaryMeasEntry m s / norm m n
 
-stationaryMeasEntryById :: MutModel -> StateFreqVec -> PopSize -> Int -> Double
-stationaryMeasEntryById m f n i = stationaryMeasEntry m f s
+stationaryMeasEntryById :: MutModel -> PopSize -> Int -> Double
+stationaryMeasEntryById m n i = stationaryMeasEntry m s
   where s = idToState n i
 
-stationaryMeasEntryByDouble :: MutModel -> StateFreqVec -> PopSize -> Double -> Double
-stationaryMeasEntryByDouble m f n x = stationaryMeasEntryById m f n (round x)
+stationaryMeasEntryByDouble :: MutModel -> PopSize -> Double -> Double
+stationaryMeasEntryByDouble m n x = stationaryMeasEntryById m n (round x)
 
-stationaryDist :: MutModel -> StateFreqVec -> PopSize -> StationaryDist
-stationaryDist m f n = scale (1.0/norm m f n) $
-  build s (stationaryMeasEntryByDouble m f n)
+stationaryDist :: MutModel -> PopSize -> StationaryDist
+stationaryDist m n = scale (1.0/norm m n) $
+  build s (stationaryMeasEntryByDouble m n)
   where s = stateSpaceSize n
 
 -- Normalize the mutation coefficients such that the heterozygosity matches a
 -- given level (see Eq. 12.14 in my thesis).
-normalizeToTheta :: MutModel -> StateFreqVec -> PopSize -> Heterozygosity -> MutModel
-normalizeToTheta mo@(DNAModel m _) f n h =
+normalizeToTheta :: MutModel -> PopSize -> Heterozygosity -> MutModel
+normalizeToTheta mo@(DNAModel m _) n h =
   mo { dnaRateMatrix = scale (h / (t * (1.0 - c * h))) m }
   where
     -- The heterozygosity of the boundary mutation model.
-    t = theta mo f
+    t = theta mo
     -- The branch length multiplicative factor introduced by the coalescent.
     c = harmonic (n-1)
 
@@ -150,15 +154,14 @@ scaleTreeToBMM n = fmap (* nSq)
 getBMMInfoStr :: Int
               -> Double
               -> MutModel
-              -> StationaryDist
               -> Maybe Double
               -> Maybe [Double]
               -> String
-getBMMInfoStr n h m f ma mrs = unlines $
+getBMMInfoStr n h m ma mrs = unlines $
   [ "Population size: " ++ show n
   , "Heterozygosity: " ++ show h
   , "Mutation model:"
-  , getDNAModelInfoStr m f
+  , getDNAModelInfoStr m
   , "Gamma rate heterogeneity: " ++ show (isJust ma) ] ++
   gammaShape ++ gammaMeans
   where

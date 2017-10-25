@@ -63,6 +63,3 @@ writeHeader handle nSites popNames =
 writeLine :: Handle -> Chrom -> Pos -> DataOneSite -> IO ()
 writeLine handle chr pos bStates =
   hPutStr handle $ getDataLine chr pos bStates
-
-close :: Handle -> IO ()
-close = hClose

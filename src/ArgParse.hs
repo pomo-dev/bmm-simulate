@@ -14,18 +14,31 @@ Provides a data type with all options and a parser.
 
 -}
 
-module ArgParse where
+module ArgParse
+  ( BMMArgs
+  , parseBMMArgs
+  , seed
+  , dnaModelSpec
+  , gammaNCat
+  , gammaShape
+  , popSize
+  , heterozygosity
+  , treeHeight
+  , treeType
+  , treeYuleRate
+  , nSites
+  , outFileName )
+where
 
-import qualified Data.Attoparsec.Text  as A
-import           Data.Semigroup        ((<>))
-import           Data.Text             (pack)
-import qualified Defaults              as Def
-import           DNAModel              (StateFreqVec)
-import           Numeric.LinearAlgebra ( Vector
-                                       , R
-                                       , norm_1
-                                       , vector)
+import qualified Data.Attoparsec.Text         as A
+import           Data.Semigroup               ((<>))
+import           Data.Text                    (pack, unpack)
+import qualified Defaults                     as Def
+import           DNAModel                     (DNAModelSpec (..), StateFreqVec)
+import           Numeric.LinearAlgebra        (norm_1, size, vector)
 import           Options.Applicative
+import qualified Text.PrettyPrint.ANSI.Leijen as Doc
+import           Tools                        (nearlyEq)
 
 -- Convenience function to read in more complicated command line options with
 -- attoparsec and optparse
@@ -35,8 +48,8 @@ attoReadM p = eitherReader (A.parseOnly p . pack)
 
 data BMMArgs = BMMArgs
   { outFileName    :: String
-  , stateFreqs     :: Vector R
-  , kappa          :: Double
+  -- , stateFreqs     :: Maybe (Vector R)
+  , dnaModelSpec   :: DNAModelSpec
   , gammaShape     :: Maybe Double
   , gammaNCat      :: Maybe Int
   , popSize        :: Int
@@ -51,8 +64,8 @@ data BMMArgs = BMMArgs
 bmSimOptions :: Parser BMMArgs
 bmSimOptions = BMMArgs
   <$> outFileNameOpt
-  <*> stateFreqsOpt
-  <*> kappaOpt
+  -- <*> stateFreqsOpt
+  <*> dnaModelOpt
   <*> gammaShapeOpt
   <*> gammaNCatOpt
   <*> popSizeOpt
@@ -70,7 +83,13 @@ parseBMMArgs = execParser $
   info (helper <*> bmSimOptions)
   (fullDesc
     <> progDesc "Simulate count files using the boundary mutation model."
-    <> header "Boundary mutation model simulator" )
+    <> header "Boundary mutation model simulator"
+    <> footerDoc models )
+  where
+    models = Just $ foldl1 (Doc.<$>) (map Doc.text strs)
+    strs   = [ "Available mutation models:"
+             , "  - HKY model with transition to transversion ratio kappa."
+             , "    Specified with \"-m HKY[DOUBLE] -f [DOUBLE,DOUBLE,DOUBLE,DOUBLE]\"." ]
 
 -- General things and options.
 outFileNameOpt :: Parser String
@@ -82,21 +101,28 @@ outFileNameOpt = strOption
     <> showDefault
     <> help "Write output to FILEPATH in counts file format" )
 
--- Option to input the stationary frequencies of the mutation model.
-stateFreqsOpt :: Parser (Vector R)
-stateFreqsOpt = option (attoReadM parseStateFreq)
-  ( long "freq"
-    <> short 'f'
-    <> metavar "DOUBLE,DOUBLE,DOUBLE,DOUBLE"
-    <> value Def.stateFreqs
-    <> showDefault
-    <> help "Set the stationary frequencies of the nucleotides in order A, C, G and T" )
+-- -- Option to input the stationary frequencies of the mutation model.
+-- stateFreqsOpt :: Parser (Maybe (Vector R))
+-- stateFreqsOpt = option (attoReadM parseStateFreq)
+--   ( long "freq"
+--     <> short 'f'
+--     <> metavar "[DOUBLE,DOUBLE,DOUBLE,DOUBLE]"
+--     <> value Def.stateFreqs
+--     <> showDefault
+--     <> help msg )
+--   where
+--     msg = "Set the stationary frequencies of the nucleotides in order A, C, G and T; " ++
+--           "not applicable if mutation model does not support different nucleotide frequencies"
 
 -- Read a stationary frequency of the form `pi_A,pi_C,pi_G,...`.
 parseStateFreq :: A.Parser StateFreqVec
 parseStateFreq = do
-  f <- vector . take nAlleles <$> A.sepBy A.double (A.char ',')
-  if norm_1 f == 1.0 then return f
+  _ <- A.char '['
+  f <- vector <$> A.sepBy A.double (A.char ',')
+  _ <- A.char ']'
+  if size f /= nAlleles
+    then error "Length of stationary frequency vector is faulty, only DNA models are supported."
+  else if nearlyEq 1e-6 (norm_1 f) 1.0 then return f
     else error $ "Stationary frequencies sum to " ++ show (norm_1 f) ++ " but should sum to 1.0."
     -- Nucleotide count hard coded. See `BndState.nAlleles`. However, I cannot
     -- take different numbers depending on the mutation model because optparse has
@@ -104,14 +130,34 @@ parseStateFreq = do
     -- arbitrary size is undesirable because of meaningless error messages.
     where nAlleles = 4
 
-kappaOpt :: Parser Double
-kappaOpt = option auto
-  ( long "kappa"
-    <> short 'k'
-    <> metavar "DOUBLE"
-    <> value Def.kappa
+dnaModelOpt :: Parser DNAModelSpec
+dnaModelOpt = option (attoReadM parseDNAModelSpec)
+  ( long "mutation-model"
+    <> short 'm'
+    <> metavar "MODEL"
+    <> value Def.dnaModelSpec
     <> showDefault
-    <> help "Set the kappa value for the HKY model" )
+    <> help "Set the mutation model; see available models below" )
+
+parseParams :: A.Parser [Double]
+parseParams = do
+  _ <- A.char '['
+  params <- A.sepBy1 A.double (A.char ',')
+  _ <- A.char ']'
+  return params
+
+parseDNAModelSpec :: A.Parser DNAModelSpec
+parseDNAModelSpec = do
+  m  <- A.takeWhile (/= '[')
+  case unpack m of
+       "HKY" -> do
+         ps <- parseParams
+         f  <- parseStateFreq
+         if length ps /= 1
+           then error "HKY model only has one parameter, kappa."
+           else return $ HKY (head ps) f
+       "JC" -> return JC
+       _ -> error "Model string could not be parsed."
 
 gammaShapeOpt :: Parser (Maybe Double)
 gammaShapeOpt = optional $ option auto

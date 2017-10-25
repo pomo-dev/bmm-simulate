@@ -40,11 +40,16 @@ import qualified Transition                       as Trans
 -- TODO: Read in specific mutation model.
 
 data BMMParams = BMMParams
-  { progName :: String
-  , args     :: [String]
-  , bmmArgs  :: Args.BMMArgs
-  , gen      :: StdGen }
+  { progName     :: String
+  , args         :: [String]
+  , bmmArgs      :: Args.BMMArgs
+  , gen          :: StdGen
+  , logHandle    :: Handle
+  , treeFilePath :: FilePath }
 
+-- The logging monad is wrapped around the actual state monad of the simulator.
+-- However, this logging feature is not used at the moment (for historical
+-- reasons).
 type Simulation = LoggingT (StateT BMMParams IO)
 
 -- | Initialize the parameters for the simulator (command line arguments etc.).
@@ -56,7 +61,10 @@ getParams = do
   let seedArg = Args.seed bmmA
   unless (seedArg == "random") $ setStdGen (read $ seedArg ++ " 1")
   g    <- getStdGen
-  return $ BMMParams p a bmmA g
+  let l  = Args.outFileName bmmA ++ ".log"
+      t  = Args.outFileName bmmA ++ ".tree"
+  lh <- openFile l WriteMode
+  return $ BMMParams p a bmmA g lh t
 
 -- Use something like this for printing info. Problem: the nice variables
 -- defined in simulate are not accessible. Maybe include them in the data
@@ -91,14 +99,19 @@ printTreeToFile tree fn = do
   hPutStrLn fh $ Tree.toNewick tree
   hClose fh
 
+logStr :: String -> Simulation ()
+logStr s = do
+  params <- lift get
+  liftIO $ hPutStr (logHandle params) s
+  liftIO $ putStr s
+
 simulate :: Simulation ()
 simulate = do
   params <- lift get
   -- Mutation model.
   let bmmA       = bmmArgs params
-      stateFreqs = Args.stateFreqs bmmA
-      kappa      = Args.kappa bmmA
-      hkyModel   = DNA.rateMatrix stateFreqs (DNA.HKY kappa)
+      dnaModelSpec = Args.dnaModelSpec bmmA
+      dnaModel   = DNA.rateMatrix dnaModelSpec
   -- Gamma rate heterogeneity, handled with the Maybe monad.
   let gammaNCat  = Args.gammaNCat bmmA
       gammaShape = Args.gammaShape bmmA
@@ -107,10 +120,10 @@ simulate = do
   let popSize          = Args.popSize bmmA
       heterozygosity   = Args.heterozygosity bmmA
       mutationModel    = BMM.normalizeToTheta
-        hkyModel stateFreqs popSize heterozygosity
-      bmRateMatrix     = BMM.normalizedRateMatrix mutationModel stateFreqs popSize
-      bmStationaryDist = BMM.stationaryDist mutationModel stateFreqs popSize
-      bmStationaryGen  = Trans.stationaryDistToGenerator bmStationaryDist
+        dnaModel popSize heterozygosity
+      bmmRateMatrix     = BMM.normalizedRateMatrix mutationModel popSize
+      bmmStationaryDist = BMM.stationaryDist mutationModel popSize
+      bmmStationaryGen  = Trans.stationaryDistToGenerator bmmStationaryDist
   -- Tree.
   let treeHeight             = Args.treeHeight bmmA
       treeType               = Args.treeType bmmA
@@ -123,43 +136,42 @@ simulate = do
                    _      -> error $ "Tree type not recognized: " ++ treeType
       treeBMM     = BMM.scaleTreeToBMM popSize treeSubs
       popNames   = Tree.getLeaves treeBMM
-      treePrb    = Trans.branchLengthsToTransitionProbs bmRateMatrix treeBMM
+      treePrb    = Trans.branchLengthsToTransitionProbs bmmRateMatrix treeBMM
       treeGen    = Trans.treeProbMatrixToTreeGenerator treePrb
   -- Other options.
   let nSites       = Args.nSites bmmA
       fileName     = Args.outFileName bmmA
-      treeFileName = fileName ++ ".tree"
 
   -- $(logError) $ pack "An error ocurred."
 
   -- Output.
-  liftIO . putStr $ getCommandLineStr (progName params) (args params)
+  logStr $ getCommandLineStr (progName params) (args params)
 
-  liftIO . putStr $ getHeadlineStr "General options."
-  liftIO . putStr $ getGeneratorStr (Args.seed bmmA) (gen params)
-  liftIO . putStr $ getFileNamesStr fileName treeFileName
-  liftIO . putStrLn $ "Number of simulated sites: " ++ show nSites
+  logStr $ getHeadlineStr "General options."
+  logStr $ getGeneratorStr (Args.seed bmmA) (gen params)
+  logStr $ getFileNamesStr fileName (treeFilePath params)
+  logStr $ "Number of simulated sites: " ++ show nSites ++ "\n"
 
-  liftIO . putStr $ getHeadlineStr "Boundary mutation model options."
-  liftIO . putStr $ BMM.getBMMInfoStr popSize heterozygosity mutationModel stateFreqs gammaShape gammaMeans
+  logStr $ getHeadlineStr "Boundary mutation model options."
+  logStr $ BMM.getBMMInfoStr popSize heterozygosity mutationModel gammaShape gammaMeans
 
-  liftIO . putStr $ getHeadlineStr "Tree options."
-  liftIO . putStr $ Tree.getTreeStr scenario treeSubs treeBMM
+  logStr $ getHeadlineStr "Tree options."
+  logStr $ Tree.getTreeStr scenario treeSubs treeBMM
 
   -- Also output tree to special file.
-  liftIO $ printTreeToFile treeBMM treeFileName
+  liftIO $ printTreeToFile treeBMM (treeFilePath params)
 
-  liftIO . putStr $ getHeadlineStr "Performing simulation."
+  logStr $ getHeadlineStr "Performing simulation."
   -- Prepare output file.
-  fileHandle <- liftIO $ CF.open fileName
-  liftIO $ CF.writeHeader fileHandle nSites popNames
+  treeHandle <- liftIO $ CF.open fileName
+  liftIO $ CF.writeHeader treeHandle nSites popNames
   -- Simulation helpers.
   let toStates = map (BMS.rmStateToBMState popSize . snd) :: [(a, RM.State)] -> [BMS.State]
-      writer   = CF.writeLine fileHandle "SIM"    :: CF.Pos -> CF.DataOneSite -> IO ()
+      writer   = CF.writeLine treeHandle "SIM"    :: CF.Pos -> CF.DataOneSite -> IO ()
   -- Simulation; loop over positions.
   let simAndPrintOneSite pos =
         if isNothing gammaShape then
-          evalRandIO (Trans.simulateSite bmStationaryGen treeGen)
+          evalRandIO (Trans.simulateSite bmmStationaryGen treeGen)
           >>= writer pos . toStates
         else
           -- Gamma rate heterogeneity is activated.
@@ -170,16 +182,17 @@ simulate = do
               means             = fromMaybe (error "No gamma shape parameter given.") gammaMeans
               scaleMutModel s m = m { DNA.dnaRateMatrix = scale s (DNA.dnaRateMatrix m) }
               mutationModels    = [ scaleMutModel s mutationModel | s <- means ]
-              bmRateMatrices    = [ BMM.normalizedRateMatrix m stateFreqs popSize | m <- mutationModels ]
-              bmStationaryDists = [ BMM.stationaryDist m stateFreqs popSize | m <- mutationModels ]
+              bmRateMatrices    = [ BMM.normalizedRateMatrix m popSize | m <- mutationModels ]
+              bmStationaryDists = [ BMM.stationaryDist m popSize | m <- mutationModels ]
               bmStationaryGens  = map Trans.stationaryDistToGenerator bmStationaryDists
               treesPrb          = [ Trans.branchLengthsToTransitionProbs b treeBMM | b <- bmRateMatrices ]
               treesGen          = map Trans.treeProbMatrixToTreeGenerator treesPrb
   liftIO $ forM_ [1..nSites] simAndPrintOneSite
 
   -- Done.
-  liftIO $ CF.close fileHandle
-  liftIO $ putStrLn "Done."
+  logStr "Done.\n"
+  liftIO $ hClose treeHandle
+  liftIO $ hClose (logHandle params)
 
 main :: IO BMMParams
 main = getParams >>= execStateT (runStderrLoggingT simulate)

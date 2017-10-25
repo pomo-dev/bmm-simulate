@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-stack exec bmm-simulate -- -n 100000 -s 1 --gamma-shape 0.3 --gamma-ncat 4
+#stack exec bmm-simulate -- -n 100000 -s 1 --gamma-shape 0.3 --gamma-ncat 4
+#stack exec bmm-simulate -- -n 100000 -s 1 -m HKY[7.0][0.5,0.2,0.2,0.1] --gamma-shape 0.3 --gamma-ncat 4
+stack exec bmm-simulate -- -n 100000 -s 1 -m JC --gamma-shape 0.3 --gamma-ncat 4
 
 # Or without seed.
 # stack exec bmm-simulate -- -n 100000

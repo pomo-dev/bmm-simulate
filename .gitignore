@@ -9,3 +9,4 @@ bmm-simulate.ps*
 bmm-simulate.aux*
 *.cf
 *.tree
+/Test.cf.log

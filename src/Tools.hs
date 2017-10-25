@@ -34,3 +34,6 @@ matrixSeparateSymSkew m = (mSym, mSkew)
 
 matrixSetDiagToZero :: Matrix R -> Matrix R
 matrixSetDiagToZero m = m - diag (takeDiag m)
+
+nearlyEq :: Double -> Double -> Double -> Bool
+nearlyEq tol a b = tol > abs (a-b)

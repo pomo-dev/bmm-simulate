@@ -28,6 +28,7 @@ library
                      , Tools
                      , Transition
   build-depends:       MonadRandom >= 0.5.1
+                     , ansi-wl-pprint >= 0.6.7.3
                      , attoparsec >= 0.13.1.0
                      , base >= 4.7 && < 5
                      , distribution >= 1.1.1.0
@@ -49,6 +50,7 @@ executable bmm-simulate
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       MonadRandom >= 0.5.1
+                     , ansi-wl-pprint >= 0.6.7.3
                      , attoparsec >= 0.13.1.0
                      , base
                      , bmm-simulate
@@ -71,6 +73,7 @@ test-suite bmm-simulate-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   build-depends:       MonadRandom >= 0.5.1
+                     , ansi-wl-pprint >= 0.6.7.3
                      , attoparsec >= 0.13.1.0
                      , base
                      , bmm-simulate

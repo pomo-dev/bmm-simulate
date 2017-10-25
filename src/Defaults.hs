@@ -16,7 +16,8 @@ Default values and constants.
 
 module Defaults where
 
-import qualified DNAModel              as DNA
+import           DNAModel              ( DNAModelSpec(..)
+                                       , StateFreqVec)
 import           Numeric.LinearAlgebra
 import qualified System.Random         as Rand
 
@@ -24,9 +25,10 @@ import qualified System.Random         as Rand
 outFileName :: String
 outFileName = "Test.cf"
 
--- | Stationary distribution of the mutation model (or stationary frequencies).
-stateFreqs :: DNA.StateFreqVec
-stateFreqs = vector [0.3, 0.2, 0.2, 0.3]
+-- -- | Stationary distribution of the mutation model (or stationary frequencies).
+-- stateFreqs :: Maybe StateFreqVec
+-- stateFreqs = Nothing
+-- -- stateFreqs = Just $ vector [0.3, 0.2, 0.2, 0.3]
 
 -- | Virtual population size.
 popSize :: Int
@@ -34,8 +36,8 @@ popSize = 9
 
 -- | A kappa value of 6.25 corresponds to a transition to transversion ratio of
 -- 3.0
-kappa :: Double
-kappa = 6.25
+dnaModelSpec :: DNAModelSpec
+dnaModelSpec = HKY 6.25 (vector [0.3, 0.2, 0.2, 0.3])
 
 -- | Heterozygosity value.
 heterozygosity :: Double
