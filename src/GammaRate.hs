@@ -1,6 +1,5 @@
 {- |
-Module      :  GammaRate
-Description :  Convenience functions to simulate Gamma rate heterogeneity.
+Description :  Convenience functions to simulate Gamma rate heterogeneity
 Copyright   :  (c) Dominik Schrempf 2017
 License     :  GPLv3
 

@@ -1,5 +1,4 @@
 {- |
-Module      :  CFWriter
 Description :  Write a counts file
 Copyright   :  (c) Dominik Schrempf 2017
 License     :  GPLv3
@@ -20,13 +19,13 @@ module CFWriter where
 import           BndState
 import           System.IO
 
--- The number of populations (leafs) on the tree.
+-- | The number of populations (leafs) on the tree.
 type NPop = Int
 
--- The number of sites that will be printed.
+-- | The number of sites that will be printed.
 type NSites = Int
 
--- The names of the populations.
+-- | The names of the populations.
 type PopulationNames = [String]
 
 -- | Compose the header using the number of sites and the population names.
@@ -36,30 +35,34 @@ header nSites popNames = lineOne ++ "\n" ++ lineTwo ++ "\n"
         lineOne = "COUNTSFILE NPOP " ++ show nPop ++ " NSITES " ++ show nSites
         lineTwo = "CHROM POS " ++ unwords popNames
 
--- The chromosome name.
+-- | The chromosome name.
 type Chrom = String
 
--- The position on the chromosome.
+-- | The position on the chromosome.
 type Pos   = Int
 
--- The set of boundary states for one site.
+-- | The set of boundary states for one site.
 type DataOneSite = [State]
 
 -- TODO: Pretty print (e.g., fixed width of CHR and POS columns).
--- Get a data line in the counts file.
+-- | Get a data line in the counts file.
 getDataLine :: Chrom -> Pos -> DataOneSite -> String
 getDataLine chrom pos bstates = chrom ++ " " ++ show pos ++ " " ++ bStatesString ++ "\n"
   where bStatesString = unwords $ map show bstates
 
+-- | I am not sure why this is needed. Maybe to make imports redundant? Can be
+-- removed.
 open :: FilePath -> IO Handle
 open file = openFile file WriteMode
 
--- Write a counts file. For now, the chromosome name is set to SIM for simulated
--- and the position is just a counter starting at 1.
+-- | Write a counts file. For now, the chromosome name is set to SIM for
+-- simulated and the position is just a counter starting at 1.
 writeHeader :: Handle -> NSites -> PopulationNames -> IO ()
 writeHeader handle nSites popNames =
   hPutStr handle $ header nSites popNames
 
+-- | Write a counts file line including chromosome (which will be SIM for the
+-- simulation), position (consecutively numbered) and the data.
 writeLine :: Handle -> Chrom -> Pos -> DataOneSite -> IO ()
 writeLine handle chr pos bStates =
   hPutStr handle $ getDataLine chr pos bStates

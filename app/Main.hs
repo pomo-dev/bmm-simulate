@@ -37,8 +37,6 @@ import qualified System.Environment               as Sys
 import           System.IO
 import qualified Transition                       as Trans
 
--- TODO: Read in specific mutation model.
-
 data BMMParams = BMMParams
   { progName     :: String
   , args         :: [String]
@@ -47,9 +45,9 @@ data BMMParams = BMMParams
   , logHandle    :: Handle
   , treeFilePath :: FilePath }
 
--- The logging monad is wrapped around the actual state monad of the simulator.
--- However, this logging feature is not used at the moment (for historical
--- reasons).
+-- | The logging monad is wrapped around the actual state monad of the
+-- simulator. However, this logging feature is not used at the moment (for
+-- historical reasons).
 type Simulation = LoggingT (StateT BMMParams IO)
 
 -- | Initialize the parameters for the simulator (command line arguments etc.).

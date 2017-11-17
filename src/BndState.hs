@@ -1,6 +1,5 @@
 {- |
-Module      :  Boundary mutation model states
-Description :  An implementation of the state space of the boundary mutation model.
+Description :  State space of the boundary mutation model
 Copyright   :  (c) Dominik Schrempf 2017
 License     :  GPLv3
 
@@ -35,19 +34,19 @@ import           Tools      (allValues)
 
 -- First, we need to define the state space.
 
--- Alleles are just nucleotides at the moment. However, I want to keep the code
--- such that it can be extended easily to codons or amino acids.
+-- | Alleles are just nucleotides at the moment. However, I want to keep the
+-- code such that it can be extended easily to codons or amino acids.
 type Allele = Nuc
--- The population size; has to be larger than one, otherwise there be dragons.
+-- | The population size; has to be larger than one, otherwise there be dragons.
 type PopSize = Int
--- The absolute frequency of an allele.
+-- | The absolute frequency of an allele.
 type AlleleCount = Int
 
--- The number of alleles.
+-- | The number of alleles.
 nAlleles :: Int
 nAlleles = 1 + fromEnum (maxBound :: Allele)
 
--- A boundary mutation model state is either a boundary state or a polymorphic
+-- | A boundary mutation model state is either a boundary state or a polymorphic
 -- state. This also automatically defines a total order.
 data State = Bnd { bndN :: PopSize
                  , bndA :: Allele }
@@ -68,7 +67,7 @@ instance Show State where
             | c == b    = show (n-i)
             | otherwise = "0"
 
--- A total order on the boundary mutation model states. In general, Bnd < Ply.
+-- | A total order on the boundary mutation model states. In general, Bnd < Ply.
 -- Then, sorting happens according to the order population size, first allele,
 -- second allele, allele count. It may be beneficial to reverse the allele count
 -- order (i.e., make a polymorphic state with higher allele count show up before
@@ -122,20 +121,26 @@ stateSpace n
                          a <- [minBound .. maxBound] :: [Allele],
                          b <- [minBound .. maxBound] :: [Allele] ]
 
+-- | The state space of the boundary mutation model for four alleles and a
+-- population size N is 4 + 6*(N-1).
 stateSpaceSize :: PopSize -> Int
 stateSpaceSize n = k + k*(k-1) `div` 2 * (n-1)
   where k = nAlleles
 
+-- | Convert a boundary state to its ID (integer). See also 'idToState'.
 stateId :: State -> Maybe Int
 stateId s = elemIndex s (stateSpace $ getPopSize s)
 
+-- | Convert an ID to a boundary state. See also 'stateID'.
 idToState :: PopSize -> Int -> State
 idToState n i = stateSpace n !! i
 
+-- | Type conversion; rate matrix state type to boundary mutation model state
+-- type.
 rmStateToBMState :: PopSize -> RM.State -> State
 rmStateToBMState n (RM.State i) = idToState n i
 
--- Check if two states are connected. By definition, states are NOT connected
+-- | Check if two states are connected. By definition, states are NOT connected
 -- with themselves.
 connected :: State -> State -> Bool
 connected s t = s `elem` getNeighbors t

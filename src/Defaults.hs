@@ -1,5 +1,4 @@
 {- |
-Module      :  Defaults
 Description :  Default values and constants
 Copyright   :  (c) Dominik Schrempf 2017
 License     :  GPLv3
@@ -16,19 +15,13 @@ Default values and constants.
 
 module Defaults where
 
-import           DNAModel              ( DNAModelSpec(..)
-                                       , StateFreqVec)
+import           DNAModel              ( DNAModelSpec(..))
 import           Numeric.LinearAlgebra
 import qualified System.Random         as Rand
 
 -- | Output file name.
 outFileName :: String
 outFileName = "Test.cf"
-
--- -- | Stationary distribution of the mutation model (or stationary frequencies).
--- stateFreqs :: Maybe StateFreqVec
--- stateFreqs = Nothing
--- -- stateFreqs = Just $ vector [0.3, 0.2, 0.2, 0.3]
 
 -- | Virtual population size.
 popSize :: Int

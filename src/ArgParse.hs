@@ -1,6 +1,5 @@
 {- |
-   Module      :  ArgParse
-   Description :  Parse arguments needed for the bmm simulator.
+   Description :  Parse arguments needed for the bmm simulator
    Copyright   :  (c) Dominik Schrempf 2017
    License     :  GPLv3
 
@@ -40,31 +39,41 @@ import           Options.Applicative
 import qualified Text.PrettyPrint.ANSI.Leijen as Doc
 import           Tools                        (nearlyEq)
 
--- Convenience function to read in more complicated command line options with
+-- | Convenience function to read in more complicated command line options with
 -- attoparsec and optparse
 -- (https://github.com/pcapriotti/optparse-applicative#option-readers).
 attoReadM :: A.Parser a -> ReadM a
 attoReadM p = eitherReader (A.parseOnly p . pack)
 
+-- | Combined option and argument data structure.
 data BMMArgs = BMMArgs
-  { outFileName    :: String
-  -- , stateFreqs     :: Maybe (Vector R)
+  { -- | Name of output counts file.
+    outFileName    :: String
+    -- | Mutation model specification.
   , dnaModelSpec   :: DNAModelSpec
+    -- | Shape parameter of gamma rate heterogeneity.
   , gammaShape     :: Maybe Double
+    -- | Number of gamma rate heterogeneity categories.
   , gammaNCat      :: Maybe Int
+    -- | Virtual population size of boundary mutation model.
   , popSize        :: Int
+    -- | Heterozygosity value (2Nu).
   , heterozygosity :: Double
+    -- | Tree height in boundary mutation model units.
   , treeHeight     :: Double
+    -- | Tree type or scenario (ILS, Yule).
   , treeType       :: String
+    -- | Yule speciation rate.
   , treeYuleRate   :: Maybe Double
+    -- | Number of sites to simulate.
   , nSites         :: Int
+    -- | Seed of the random number generator.
   , seed           :: String }
 
--- Composition of all options.
+-- | Composition of all options.
 bmSimOptions :: Parser BMMArgs
 bmSimOptions = BMMArgs
   <$> outFileNameOpt
-  -- <*> stateFreqsOpt
   <*> dnaModelOpt
   <*> gammaShapeOpt
   <*> gammaNCatOpt
@@ -76,8 +85,8 @@ bmSimOptions = BMMArgs
   <*> nSitesOpt
   <*> seedOpt
 
--- The impure IO action that reads the arguments and prints out help if needed.
--- Maybe put this into Main.hs?
+-- | The impure IO action that reads the arguments and prints out help if
+-- needed. Maybe put this into Main.hs?
 parseBMMArgs :: IO BMMArgs
 parseBMMArgs = execParser $
   info (helper <*> bmSimOptions)
@@ -96,7 +105,7 @@ parseBMMArgs = execParser $
              , ""
              , "Note: The state frequency vector has to sum up to 1.0 and only has three free parameters." ]
 
--- General things and options.
+-- | General things and options.
 outFileNameOpt :: Parser String
 outFileNameOpt = strOption
   ( long "output"
@@ -106,20 +115,7 @@ outFileNameOpt = strOption
     <> showDefault
     <> help "Write output to FILEPATH in counts file format" )
 
--- -- Option to input the stationary frequencies of the mutation model.
--- stateFreqsOpt :: Parser (Maybe (Vector R))
--- stateFreqsOpt = option (attoReadM parseStateFreq)
---   ( long "freq"
---     <> short 'f'
---     <> metavar "[DOUBLE,DOUBLE,DOUBLE,DOUBLE]"
---     <> value Def.stateFreqs
---     <> showDefault
---     <> help msg )
---   where
---     msg = "Set the stationary frequencies of the nucleotides in order A, C, G and T; " ++
---           "not applicable if mutation model does not support different nucleotide frequencies"
-
--- Read a stationary frequency of the form `pi_A,pi_C,pi_G,...`.
+-- | Read a stationary frequency of the form `pi_A,pi_C,pi_G,...`.
 parseStateFreq :: A.Parser StateFreqVec
 parseStateFreq = do
   _ <- A.char '['

@@ -1,6 +1,5 @@
 {- |
-Module      :  DNA Markov models
-Description :  An implementation of DNA Markov models (substitution models or mutation models)
+Description :  DNA Markov models (substitution models or mutation models)
 Copyright   :  (c) Dominik Schrempf 2017
 License     :  GPLv3
 
@@ -30,17 +29,17 @@ import           Data.List             (intercalate)
 import           Numeric.LinearAlgebra
 import           RateMatrix
 
--- The nucleotides.
+-- | The nucleotides.
 data Nuc = A | C | G | T deriving (Eq, Show, Read, Ord, Bounded, Enum)
 
 nNucs :: Int
 nNucs = 1 + fromEnum (maxBound :: Nuc)
 
--- The DNA model specifications. E.g., for the HKY model, we only have kappa.
+-- | The DNA model specifications. E.g., for the HKY model, we only have kappa.
 data DNAModelSpec = JC |
-                    -- HKY model with transition to transversion ratio kappa.
+                    -- | HKY model with transition to transversion ratio kappa.
                     HKY Double StateFreqVec |
-                    -- GTR model with five params and state frequency vector.
+                    -- | GTR model with five params and state frequency vector.
                     GTR Double Double Double Double Double StateFreqVec
 
 instance Show DNAModelSpec where
@@ -49,20 +48,21 @@ instance Show DNAModelSpec where
   show (GTR a b c d e f) = "GTR[" ++ paramsStr ++ "]" ++ show f
     where paramsStr = intercalate "," (map show [a,b,c,d,e])
 
+-- | Extract stationary frequency vector of a DNA model specification 'DNAModelSpec'.
 dnaModelSpecGetStateFreqVec :: DNAModelSpec -> StateFreqVec
 dnaModelSpecGetStateFreqVec JC                = vector $ replicate nNucs 0.25
 dnaModelSpecGetStateFreqVec (HKY _ f)         = f
 dnaModelSpecGetStateFreqVec (GTR _ _ _ _ _ f) = f
 
--- A rate matrix of a DNA models is called DNAModel.
+-- | A rate matrix of a DNA models is called DNAModel.
 data DNAModel = DNAModel { dnaRateMatrix :: RateMatrix
                          , dnaModelSpec  :: DNAModelSpec }
 
--- A stationary distribution of a DNA model is also called stationary frequency
--- vector.
+-- | A stationary distribution of a DNA model is also called stationary
+-- frequency vector.
 type StateFreqVec  = StationaryDist
 
--- The matrix of exchangeabilities; diagonal entries are not set.
+-- | The matrix of exchangeabilities; diagonal entries are not set.
 exchangeabilityMatrix :: DNAModelSpec -> Matrix R
 exchangeabilityMatrix JC = (4><4)
   [ 0.0, 1.0, 1.0, 1.0
@@ -90,6 +90,7 @@ rateMatrix s = DNAModel rm s
     rm   = normalizeRates f $ setDiagonal $ exch <> diag f
 -- rateMatrix _ _       = error "Model not yet supported."
 
+-- | Report a specific model.
 getDNAModelInfoStr :: DNAModel -> String
 getDNAModelInfoStr (DNAModel m s) =
   case s of

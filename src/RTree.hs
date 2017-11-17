@@ -1,6 +1,5 @@
 {- |
-Module      :  RTree
-Description :  A binary, rooted tree structure with branch lengths
+Description :  Binary, rooted tree structure with branch lengths
 Copyright   :  (c) Dominik Schrempf 2017
 License     :  GPLv3
 
@@ -30,10 +29,10 @@ module RTree
 import Data.Random
 import Data.Random.Distribution.Exponential
 
--- Branch lengths on trees are measured in Double.
+-- | Branch lengths on trees are measured in Double.
 type BranchLn = Double
 
--- The strict tree data type with node names or states of type a. The branch
+-- | The strict tree data type with node names or states of type a. The branch
 -- length of type b is the length from the current to the left and right child.
 data RTree a b = Node { state :: !a
                       , lBrLn :: !b
@@ -43,7 +42,7 @@ data RTree a b = Node { state :: !a
                | Leaf { state :: !a }
                deriving (Eq, Show, Read)
 
--- Make (RTree a) a functor. Like this, we can scale branch lengths or convert
+-- | Make (RTree a) a functor. Like this, we can scale branch lengths or convert
 -- them to transition probability matrices.
 instance Functor (RTree a) where
   fmap _ (Leaf a) = Leaf a
@@ -68,17 +67,19 @@ instance Show Scenario where
           showHeight th = "Tree height in average number of substitutions: " ++ show th
           showRate rt = "Yule speciation rate: " ++ show rt
 
--- The total branch length; only works when the branch lengths are numbers.
+-- | The total branch length; only works when the branch lengths are numbers.
 totalBrLn :: RTree a BranchLn -> BranchLn
 totalBrLn (Leaf _) = 0
 totalBrLn t = lBrLn t + rBrLn t
                       + totalBrLn (lChld t)
                       + totalBrLn (rChld t)
 
+-- | For a given tree, return a list of leaves.
 getLeaves :: RTree a b -> [a]
 getLeaves (Node _ _ lc _ rc) = getLeaves lc ++ getLeaves rc
 getLeaves leaf = [state leaf]
 
+-- | Convert a tree into a Newick string.
 toNewick :: RTree String BranchLn -> String
 toNewick t = toNewick' t ++ ";"
   where
@@ -127,6 +128,7 @@ labelLeaves' (Node _ lB lC rB rC) n = (Node "" lB lC' rB rC', n'')
   where (lC', n' ) = labelLeaves' lC n
         (rC', n'') = labelLeaves' rC n'
 
+-- | Report the tree type (scenario) and the tree itself.
 getTreeStr :: Scenario
            -> RTree String BranchLn
            -> RTree String BranchLn
