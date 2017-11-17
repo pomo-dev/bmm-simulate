@@ -26,6 +26,7 @@ module DNAModel
   , dnaModelSpecGetStateFreqVec )
   where
 
+import           Data.List             (intercalate)
 import           Numeric.LinearAlgebra
 import           RateMatrix
 
@@ -38,15 +39,20 @@ nNucs = 1 + fromEnum (maxBound :: Nuc)
 -- The DNA model specifications. E.g., for the HKY model, we only have kappa.
 data DNAModelSpec = JC |
                     -- HKY model with transition to transversion ratio kappa.
-                    HKY Double StateFreqVec
+                    HKY Double StateFreqVec |
+                    -- GTR model with five params and state frequency vector.
+                    GTR Double Double Double Double Double StateFreqVec
 
 instance Show DNAModelSpec where
-  show (HKY k f) = "HKY[" ++ show k ++ "]" ++ show f
   show JC        = "JC"
+  show (HKY k f) = "HKY[" ++ show k ++ "]" ++ show f
+  show (GTR a b c d e f) = "GTR[" ++ paramsStr ++ "]" ++ show f
+    where paramsStr = intercalate "," (map show [a,b,c,d,e])
 
 dnaModelSpecGetStateFreqVec :: DNAModelSpec -> StateFreqVec
-dnaModelSpecGetStateFreqVec (HKY _ f) = f
-dnaModelSpecGetStateFreqVec JC = vector $ replicate nNucs 0.25
+dnaModelSpecGetStateFreqVec JC                = vector $ replicate nNucs 0.25
+dnaModelSpecGetStateFreqVec (HKY _ f)         = f
+dnaModelSpecGetStateFreqVec (GTR _ _ _ _ _ f) = f
 
 -- A rate matrix of a DNA models is called DNAModel.
 data DNAModel = DNAModel { dnaRateMatrix :: RateMatrix
@@ -56,27 +62,28 @@ data DNAModel = DNAModel { dnaRateMatrix :: RateMatrix
 -- vector.
 type StateFreqVec  = StationaryDist
 
--- The matrix of exchangeabilities.
+-- The matrix of exchangeabilities; diagonal entries are not set.
 exchangeabilityMatrix :: DNAModelSpec -> Matrix R
-exchangeabilityMatrix (HKY k _) = (4><4)
-  [ 0.0, 1.0,   k, 1.0
-  , 1.0, 0.0, 1.0, k
-  ,   k, 1.0, 0.0, 1.0
-  , 1.0,   k, 1.0, 0.0 ]
 exchangeabilityMatrix JC = (4><4)
   [ 0.0, 1.0, 1.0, 1.0
   , 1.0, 0.0, 1.0, 1.0
   , 1.0, 1.0, 0.0, 1.0
   , 1.0, 1.0, 1.0, 0.0 ]
+exchangeabilityMatrix (HKY k _) = (4><4)
+  [ 0.0, 1.0,   k, 1.0
+  , 1.0, 0.0, 1.0,   k
+  ,   k, 1.0, 0.0, 1.0
+  , 1.0,   k, 1.0, 0.0 ]
+exchangeabilityMatrix (GTR a b c d e _) = (4><4)
+  [ 0.0,   a,   b,   c
+  ,   a, 0.0,   d,   e
+  ,   b,   d, 0.0, 1.0
+  ,   c,   e, 1.0, 0.0 ]
 -- exchangeabilityMatrix _     = error "Model not yet supported."
 
 -- | DNA model rate matrix normalized so that one mutation happens per unit time.
 rateMatrix :: DNAModelSpec -> DNAModel
-rateMatrix s =
-  case s of
-    (HKY _ _) -> DNAModel rm s
-    JC        -> DNAModel rm s
-    -- _ -> error "Model not yet supported."
+rateMatrix s = DNAModel rm s
   where
     f    = dnaModelSpecGetStateFreqVec s
     exch = exchangeabilityMatrix s
@@ -86,13 +93,23 @@ rateMatrix s =
 getDNAModelInfoStr :: DNAModel -> String
 getDNAModelInfoStr (DNAModel m s) =
   case s of
-    (HKY k f) -> unlines
-      [ "HKY model with rate matrix"
-      , show m
-      , reportStateFreqVec f
-      , "And a kappa value of: " ++ show k ]
     JC        -> unlines
       [ "JC model with rate matrix"
       , show m ]
+    (HKY k f) -> unlines
+      [ "HKY model"
+      , reportRateMatrix
+      , reportExchangeabilityMatrix
+      , reportStateFreqVec f
+      , "And a kappa value of: " ++ show k ]
+    (GTR a b c d e f) -> unlines
+      [ "GTR model"
+      , reportRateMatrix
+      , reportExchangeabilityMatrix
+      , reportStateFreqVec f
+      , "And parameters: " ++ intercalate ", " (map show [a,b,c,d,e]) ]
       -- _ -> error "Model not yet supported."
-  where reportStateFreqVec f = "This corresponds to state frequencies (A, C, G, T): " ++ show f
+  where reportRateMatrix   = "Rate matrix " ++ show m
+        reportStateFreqVec f = "This corresponds to state frequencies (A, C, G, T): " ++ show f
+        reportExchangeabilityMatrix = "Exchangeability matrix (diagonal set to 0.0) " ++
+                                      show (exchangeabilityMatrix s)

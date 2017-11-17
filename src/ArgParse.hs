@@ -88,8 +88,13 @@ parseBMMArgs = execParser $
   where
     models = Just $ foldl1 (Doc.<$>) (map Doc.text strs)
     strs   = [ "Available mutation models:"
-             , "  - HKY model with transition to transversion ratio kappa."
-             , "    Specified with \"-m HKY[DOUBLE] -f [DOUBLE,DOUBLE,DOUBLE,DOUBLE]\"." ]
+
+             , "  - HKY model with transition to transversion ratio kappa and a state frequency vector."
+             , "    Specified with \"-m HKY[DOUBLE][DOUBLE,DOUBLE,DOUBLE,DOUBLE]\"."
+             , "  - GTR model with five rate parameters and state frequency vector."
+             , "    Specified with \"-m HKY[DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE][DOUBLE,DOUBLE,DOUBLE,DOUBLE]\"."
+             , ""
+             , "Note: The state frequency vector has to sum up to 1.0 and only has three free parameters." ]
 
 -- General things and options.
 outFileNameOpt :: Parser String
@@ -137,7 +142,7 @@ dnaModelOpt = option (attoReadM parseDNAModelSpec)
     <> metavar "MODEL"
     <> value Def.dnaModelSpec
     <> showDefault
-    <> help "Set the mutation model; see available models below" )
+    <> help "Set the mutation model; available models are shown below" )
 
 parseParams :: A.Parser [Double]
 parseParams = do
@@ -150,13 +155,19 @@ parseDNAModelSpec :: A.Parser DNAModelSpec
 parseDNAModelSpec = do
   m  <- A.takeWhile (/= '[')
   case unpack m of
+       "JC" -> return JC
        "HKY" -> do
          ps <- parseParams
          f  <- parseStateFreq
          if length ps /= 1
            then error "HKY model only has one parameter, kappa."
            else return $ HKY (head ps) f
-       "JC" -> return JC
+       "GTR" -> do
+         ps <- parseParams
+         f  <- parseStateFreq
+         if length ps /= 5
+           then error "GTR model has five parameters."
+           else return $ GTR (head ps) (ps !! 1) (ps !! 2) (ps !! 3) (ps !! 4) f
        _ -> error "Model string could not be parsed."
 
 gammaShapeOpt :: Parser (Maybe Double)
