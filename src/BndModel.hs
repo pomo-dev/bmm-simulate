@@ -12,13 +12,13 @@ This module defines the transition rate matrix of the boundary mutation model.
 -}
 
 module BndModel
-  ( MutModel
-  , Heterozygosity
-  , normalizeToTheta
-  , normalizedRateMatrix
-  , stationaryDist
+  ( BMModel(..)
+  , createBMM
   , scaleTreeToBMM
-  , getBMMInfoStr )
+  , getBMMInfoStr
+  -- TODO: Do not export this, handle gamma scaling in here?
+  , normalizedRateMatrix
+  , stationaryDist )
   where
 
 import           BndState
@@ -29,12 +29,20 @@ import           RateMatrix            hiding (State)
 import           RTree
 import           Tools
 
--- TODO: Let's just give rate matrices of the boundary mutation model a special
--- name. data BMModel = BMModel { bmmRateMatrix :: RateMatrix , bmmMutMatrix ::
--- MutModel , bmmPopSize :: PopSize }
-
 -- | The boundary mutation models uses an underlying mutation model.
 type MutModel = DNAModel
+
+-- | Define a heterozygosity to make function definitions clearer.
+type Heterozygosity = Double
+
+-- | A boundary mutation model is defined by its rate matrix. However, it is
+-- convenient to keep the underlying mutation model, the population size the
+-- heterozygosity and the stationary distribution at hand.
+data BMModel = BMModel { bmmRateMatrix     :: RateMatrix
+                       , bmmMutModel       :: MutModel
+                       , bmmPopSize        :: PopSize
+                       , bmmHeterozygosity :: Heterozygosity
+                       , bmmStationaryDist :: StationaryDist }
 
 -- | First we need to define a mutation model.
 mutRate :: MutModel -> Allele -> Allele -> Double
@@ -43,7 +51,7 @@ mutRate (DNAModel m _) a b = m ! i ! j
         j = fromEnum b
 
 -- | Get state frequency for specific allele.
-stateFreq :: StateFreqVec -> Allele -> Double
+stateFreq :: StationaryDist -> Allele -> Double
 stateFreq f a = f ! fromEnum a
 
 -- | Calculate the rate of frequency shifts.
@@ -90,9 +98,6 @@ normalizedRateMatrix m n = normalizeRates f' m'
         -- f  = dnaModelSpecGetStateFreqVec (dnaModelSpec m)
         f' = stationaryDist m n
 
--- | Define a heterozygosity to make function definitions clearer.
-type Heterozygosity = Double
-
 -- | Calculate the heterozygosity at stationarity.
 theta :: MutModel -> Heterozygosity
 theta (DNAModel m s) = f <.> rDiagZero #> f
@@ -119,11 +124,6 @@ stationaryMeasEntry m s =
             piB = stateFreq f b
             mBA = mutRate m b a
 
--- -- Only use this function when accessing single elements of the stationary
--- -- distribution. Otherwise, computation of the norm is unnecessarily repeated.
--- stationaryDistEntry :: MutModel -> PopSize -> State -> Double
--- stationaryDistEntry m n s = stationaryMeasEntry m s / norm m n
-
 stationaryMeasEntryById :: MutModel -> PopSize -> Int -> Double
 stationaryMeasEntryById m n i = stationaryMeasEntry m s
   where s = idToState n i
@@ -148,6 +148,14 @@ normalizeToTheta mo@(DNAModel m _) n h =
     -- | The branch length multiplicative factor introduced by the coalescent.
     c = harmonic (n-1)
 
+-- | Create a boundary mutation model using the minimal number of necessary
+-- ingredients.
+createBMM :: DNAModel -> PopSize -> Heterozygosity -> BMModel
+createBMM m n h = BMModel rm m' n h f
+  where m' = normalizeToTheta m n h
+        rm = normalizedRateMatrix m n
+        f  = stationaryDist m n
+
 -- | The branch lengths of threes in the boundary mutation model are not
 -- measured in average number of substitutions per site but in average number of
 -- mutations or frequency shifts per site. The conversion factor is just the
@@ -158,17 +166,15 @@ scaleTreeToBMM n = fmap (* nSq)
   where nSq = fromIntegral n ** 2
 
 -- | Report the boundary mutation model specifications.
-getBMMInfoStr :: Int
-              -> Double
-              -> MutModel
+getBMMInfoStr :: BMModel
               -> Maybe Double
               -> Maybe [Double]
               -> String
-getBMMInfoStr n h m ma mrs = unlines $
-  [ "Population size: " ++ show n
-  , "Heterozygosity: " ++ show h
+getBMMInfoStr bmm ma mrs = unlines $
+  [ "Population size: " ++ show (bmmPopSize bmm)
+  , "Heterozygosity: " ++ show (bmmHeterozygosity bmm)
   , "Mutation model:"
-  , getDNAModelInfoStr m
+  , getDNAModelInfoStr (bmmMutModel bmm)
   , "Gamma rate heterogeneity: " ++ show (isJust ma) ] ++
   gammaShape ++ gammaMeans
   where

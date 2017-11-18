@@ -18,7 +18,6 @@ the boundary mutation model.
 module DNAModel
   ( DNAModelSpec(..)
   , DNAModel(..)
-  , StateFreqVec
   , Nuc
   , getDNAModelInfoStr
   , rateMatrix
@@ -38,9 +37,9 @@ nNucs = 1 + fromEnum (maxBound :: Nuc)
 -- | The DNA model specifications. E.g., for the HKY model, we only have kappa.
 data DNAModelSpec = JC |
                     -- | HKY model with transition to transversion ratio kappa.
-                    HKY Double StateFreqVec |
+                    HKY Double StationaryDist |
                     -- | GTR model with five params and state frequency vector.
-                    GTR Double Double Double Double Double StateFreqVec
+                    GTR Double Double Double Double Double StationaryDist
 
 instance Show DNAModelSpec where
   show JC        = "JC"
@@ -49,7 +48,7 @@ instance Show DNAModelSpec where
     where paramsStr = intercalate "," (map show [a,b,c,d,e])
 
 -- | Extract stationary frequency vector of a DNA model specification 'DNAModelSpec'.
-dnaModelSpecGetStateFreqVec :: DNAModelSpec -> StateFreqVec
+dnaModelSpecGetStateFreqVec :: DNAModelSpec -> StationaryDist
 dnaModelSpecGetStateFreqVec JC                = vector $ replicate nNucs 0.25
 dnaModelSpecGetStateFreqVec (HKY _ f)         = f
 dnaModelSpecGetStateFreqVec (GTR _ _ _ _ _ f) = f
@@ -57,10 +56,6 @@ dnaModelSpecGetStateFreqVec (GTR _ _ _ _ _ f) = f
 -- | A rate matrix of a DNA models is called DNAModel.
 data DNAModel = DNAModel { dnaRateMatrix :: RateMatrix
                          , dnaModelSpec  :: DNAModelSpec }
-
--- | A stationary distribution of a DNA model is also called stationary
--- frequency vector.
-type StateFreqVec  = StationaryDist
 
 -- | The matrix of exchangeabilities; diagonal entries are not set.
 exchangeabilityMatrix :: DNAModelSpec -> Matrix R

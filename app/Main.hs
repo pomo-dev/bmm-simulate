@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 {- |
 Module      :  BMM simulator
 Description :  Simulate populations using the boundary mutation model
@@ -117,11 +115,8 @@ simulate = do
   -- Boundary mutation model.
   let popSize          = Args.popSize bmmA
       heterozygosity   = Args.heterozygosity bmmA
-      mutationModel    = BMM.normalizeToTheta
-        dnaModel popSize heterozygosity
-      bmmRateMatrix     = BMM.normalizedRateMatrix mutationModel popSize
-      bmmStationaryDist = BMM.stationaryDist mutationModel popSize
-      bmmStationaryGen  = Trans.stationaryDistToGenerator bmmStationaryDist
+      bmm              = BMM.createBMM dnaModel popSize heterozygosity
+      bmmStationaryGen  = Trans.stationaryDistToGenerator (BMM.bmmStationaryDist bmm)
   -- Tree.
   let treeHeight             = Args.treeHeight bmmA
       treeType               = Args.treeType bmmA
@@ -134,7 +129,7 @@ simulate = do
                    _      -> error $ "Tree type not recognized: " ++ treeType
       treeBMM     = BMM.scaleTreeToBMM popSize treeSubs
       popNames   = Tree.getLeaves treeBMM
-      treePrb    = Trans.branchLengthsToTransitionProbs bmmRateMatrix treeBMM
+      treePrb    = Trans.branchLengthsToTransitionProbs (BMM.bmmRateMatrix bmm) treeBMM
       treeGen    = Trans.treeProbMatrixToTreeGenerator treePrb
   -- Other options.
   let nSites       = Args.nSites bmmA
@@ -151,7 +146,7 @@ simulate = do
   logStr $ "Number of simulated sites: " ++ show nSites ++ "\n"
 
   logStr $ getHeadlineStr "Boundary mutation model options."
-  logStr $ BMM.getBMMInfoStr popSize heterozygosity mutationModel gammaShape gammaMeans
+  logStr $ BMM.getBMMInfoStr bmm gammaShape gammaMeans
 
   logStr $ getHeadlineStr "Tree options."
   logStr $ Tree.getTreeStr scenario treeSubs treeBMM
@@ -179,6 +174,7 @@ simulate = do
               uniformGen        = D.fromDistribution $ D.uniform [0 .. nCat - 1]
               means             = fromMaybe (error "No gamma shape parameter given.") gammaMeans
               scaleMutModel s m = m { DNA.dnaRateMatrix = scale s (DNA.dnaRateMatrix m) }
+              mutationModel     = BMM.bmmMutModel bmm
               mutationModels    = [ scaleMutModel s mutationModel | s <- means ]
               bmRateMatrices    = [ BMM.normalizedRateMatrix m popSize | m <- mutationModels ]
               bmStationaryDists = [ BMM.stationaryDist m popSize | m <- mutationModels ]

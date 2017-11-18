@@ -14,32 +14,22 @@ Provides a data type with all options and a parser.
 -}
 
 module ArgParse
-  ( BMMArgs
+  ( BMMArgs(..)
   , parseBMMArgs
-  , seed
-  , dnaModelSpec
-  , gammaNCat
-  , gammaShape
-  , popSize
-  , heterozygosity
-  , treeHeight
-  , treeType
-  , treeYuleRate
-  , nSites
-  , outFileName )
-where
+  ) where
 
 import qualified Data.Attoparsec.Text         as A
 import           Data.Semigroup               ((<>))
 import           Data.Text                    (pack, unpack)
 import qualified Defaults                     as Def
-import           DNAModel                     (DNAModelSpec (..), StateFreqVec)
+import           DNAModel                     (DNAModelSpec(..))
+import           RateMatrix                   (StationaryDist)
 import           Numeric.LinearAlgebra        (norm_1, size, vector)
 import           Options.Applicative
 import qualified Text.PrettyPrint.ANSI.Leijen as Doc
 import           Tools                        (nearlyEq)
 
--- | Convenience function to read in more complicated command line options with
+-- Convenience function to read in more complicated command line options with
 -- attoparsec and optparse
 -- (https://github.com/pcapriotti/optparse-applicative#option-readers).
 attoReadM :: A.Parser a -> ReadM a
@@ -70,7 +60,7 @@ data BMMArgs = BMMArgs
     -- | Seed of the random number generator.
   , seed           :: String }
 
--- | Composition of all options.
+-- Composition of all options.
 bmSimOptions :: Parser BMMArgs
 bmSimOptions = BMMArgs
   <$> outFileNameOpt
@@ -105,7 +95,7 @@ parseBMMArgs = execParser $
              , ""
              , "Note: The state frequency vector has to sum up to 1.0 and only has three free parameters." ]
 
--- | General things and options.
+-- General things and options.
 outFileNameOpt :: Parser String
 outFileNameOpt = strOption
   ( long "output"
@@ -115,8 +105,8 @@ outFileNameOpt = strOption
     <> showDefault
     <> help "Write output to FILEPATH in counts file format" )
 
--- | Read a stationary frequency of the form `pi_A,pi_C,pi_G,...`.
-parseStateFreq :: A.Parser StateFreqVec
+-- Read a stationary frequency of the form `pi_A,pi_C,pi_G,...`.
+parseStateFreq :: A.Parser StationaryDist
 parseStateFreq = do
   _ <- A.char '['
   f <- vector <$> A.sepBy A.double (A.char ',')

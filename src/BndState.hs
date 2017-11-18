@@ -15,10 +15,12 @@ that allows mutations only when the population is monomorphic.
 -}
 
 module BndState
-  ( Allele
+  ( -- * Types
+    Allele
   , PopSize
   , AlleleCount
   , State(..)
+    -- * Functions
   , stateSpace
   , stateSpaceSize
   , stateId
@@ -31,8 +33,6 @@ import           Data.List
 import           DNAModel
 import qualified RateMatrix as RM
 import           Tools      (allValues)
-
--- First, we need to define the state space.
 
 -- | Alleles are just nucleotides at the moment. However, I want to keep the
 -- code such that it can be extended easily to codons or amino acids.
