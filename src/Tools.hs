@@ -43,11 +43,16 @@ nearlyEq tol a b = tol > abs (a-b)
 
 -- Functions that fill a string 's' to a given width 'n' by adding a pad character 'c'
 -- (c) to align right.
+fillDiff :: Int -> String -> Int
+fillDiff width entry =
+  if l >= width then 0 else width - l
+  where l = length entry
+
 fillLeft :: Char -> Int -> String -> String
-fillLeft c n s = s ++ replicate (n - length s) c
+fillLeft c n s = s ++ replicate (fillDiff n s) c
 
 fillRight :: Char -> Int -> String -> String
-fillRight c n s = replicate (n - length s) c ++ s
+fillRight c n s = replicate (fillDiff n s) c ++ s
 
 left :: Int -> String -> String
 left = fillLeft ' '
