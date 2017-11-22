@@ -40,3 +40,17 @@ matrixSetDiagToZero m = m - diag (takeDiag m)
 -- | Test for equality with tolerance (needed because of machine precision).
 nearlyEq :: Double -> Double -> Double -> Bool
 nearlyEq tol a b = tol > abs (a-b)
+
+-- Functions that fill a string 's' to a given width 'n' by adding a pad character 'c'
+-- (c) to align right.
+fillLeft :: Char -> Int -> String -> String
+fillLeft c n s = s ++ replicate (n - length s) c
+
+fillRight :: Char -> Int -> String -> String
+fillRight c n s = replicate (n - length s) c ++ s
+
+left :: Int -> String -> String
+left = fillLeft ' '
+
+right :: Int -> String -> String
+right = fillRight ' '

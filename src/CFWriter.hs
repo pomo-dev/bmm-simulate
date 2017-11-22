@@ -14,13 +14,17 @@ size, etc.), write the data to file using counts file format.
 
 -}
 
-module CFWriter where
+module CFWriter
+  ( Pos
+  , DataOneSite
+  , writeHeader
+  , writeLine
+  , open
+  ) where
 
 import           BndState
 import           System.IO
-
--- | The number of populations (leafs) on the tree.
-type NPop = Int
+import           Tools     (left, right)
 
 -- | The number of sites that will be printed.
 type NSites = Int
@@ -28,12 +32,16 @@ type NSites = Int
 -- | The names of the populations.
 type PopulationNames = [String]
 
+-- The column width of the counts file.
+colW :: Int
+colW = 11
+
 -- | Compose the header using the number of sites and the population names.
 header :: NSites -> PopulationNames -> String
 header nSites popNames = lineOne ++ "\n" ++ lineTwo ++ "\n"
   where nPop = length popNames
         lineOne = "COUNTSFILE NPOP " ++ show nPop ++ " NSITES " ++ show nSites
-        lineTwo = "CHROM POS " ++ unwords popNames
+        lineTwo = left colW "CHROM" ++ right colW "POS" ++ unwords (map (right colW) popNames)
 
 -- | The chromosome name.
 type Chrom = String
@@ -44,11 +52,10 @@ type Pos   = Int
 -- | The set of boundary states for one site.
 type DataOneSite = [State]
 
--- TODO: Pretty print (e.g., fixed width of CHR and POS columns).
 -- | Get a data line in the counts file.
 getDataLine :: Chrom -> Pos -> DataOneSite -> String
-getDataLine chrom pos bstates = chrom ++ " " ++ show pos ++ " " ++ bStatesString ++ "\n"
-  where bStatesString = unwords $ map show bstates
+getDataLine chrom pos bstates = left colW chrom ++ right colW (show pos) ++ bStatesString ++ "\n"
+  where bStatesString = unwords $ map (right colW . show) bstates
 
 -- | I am not sure why this is needed. Maybe to make imports redundant? Can be
 -- removed.
