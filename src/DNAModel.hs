@@ -21,8 +21,9 @@ module DNAModel
   , Nuc
   , getDNAModelInfoStr
   , rateMatrix
-  , dnaModelSpecGetStateFreqVec )
-  where
+  , dnaModelSpecGetStateFreqVec
+  , dnaModelScale
+  ) where
 
 import           Data.List             (intercalate)
 import           Numeric.LinearAlgebra
@@ -109,3 +110,11 @@ getDNAModelInfoStr (DNAModel m s) =
         reportStateFreqVec f = "This corresponds to state frequencies (A, C, G, T): " ++ show f
         reportExchangeabilityMatrix = "Exchangeability matrix (diagonal set to 0.0) " ++
                                       show (exchangeabilityMatrix s)
+
+-- | Scale a DNA model.
+dnaModelScale :: Double -> DNAModel -> DNAModel
+dnaModelScale s (DNAModel rm spec) = DNAModel (scale s rm) scaledSpec
+  where scaledSpec = case spec of
+                       JC              -> JC
+                       HKY k f         -> HKY (s*k) f
+                       GTR a b c d e f -> GTR (s*a) (s*b) (s*c) (s*d) (s*e) f

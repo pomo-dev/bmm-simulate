@@ -13,7 +13,15 @@ Please see function definitions and documentations.
 
 -}
 
-module Tools where
+module Tools
+  ( allValues
+  , harmonic
+  , matrixSeparateSymSkew
+  , matrixSetDiagToZero
+  , nearlyEq
+  , left
+  , right
+  ) where
 
 import Numeric.LinearAlgebra
 
@@ -41,8 +49,8 @@ matrixSetDiagToZero m = m - diag (takeDiag m)
 nearlyEq :: Double -> Double -> Double -> Bool
 nearlyEq tol a b = tol > abs (a-b)
 
--- Functions that fill a string 's' to a given width 'n' by adding a pad character 'c'
--- (c) to align right.
+-- Functions that fill a string 's' to a given width 'n' by adding a pad
+-- character 'c' (c) to align right.
 fillDiff :: Int -> String -> Int
 fillDiff width entry =
   if l >= width then 0 else width - l
@@ -54,8 +62,10 @@ fillLeft c n s = s ++ replicate (fillDiff n s) c
 fillRight :: Char -> Int -> String -> String
 fillRight c n s = replicate (fillDiff n s) c ++ s
 
+-- | Fill a string to a given width by adding spaces. Align left.
 left :: Int -> String -> String
 left = fillLeft ' '
 
+-- | Fill a string to a given width by adding spaces. Align right.
 right :: Int -> String -> String
 right = fillRight ' '

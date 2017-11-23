@@ -13,13 +13,13 @@ This module defines the transition rate matrix of the boundary mutation model.
 
 module BndModel
   ( BMModel(..)
+  , MutModel
+  , Heterozygosity
   , createBMM
+  , createBMMNormalized
   , scaleTreeToBMM
   , getBMMInfoStr
-  -- TODO: Do not export this, handle gamma scaling in here?
-  , normalizedRateMatrix
-  , stationaryDist )
-  where
+  ) where
 
 import           BndState
 import           Data.Maybe
@@ -44,23 +44,23 @@ data BMModel = BMModel { bmmRateMatrix     :: RateMatrix
                        , bmmHeterozygosity :: Heterozygosity
                        , bmmStationaryDist :: StationaryDist }
 
--- | First we need to define a mutation model.
+-- Get the mutation rate from one allele to another.
 mutRate :: MutModel -> Allele -> Allele -> Double
 mutRate (DNAModel m _) a b = m ! i ! j
   where i = fromEnum a
         j = fromEnum b
 
--- | Get state frequency for specific allele.
-stateFreq :: StationaryDist -> Allele -> Double
-stateFreq f a = f ! fromEnum a
+-- Get state frequency for specific allele.
+stationaryFreq :: StationaryDist -> Allele -> Double
+stationaryFreq f a = f ! fromEnum a
 
--- | Calculate the rate of frequency shifts.
+-- Calculate the rate of frequency shifts.
 moranCoef :: PopSize -> Int -> Double
 moranCoef n i = iD * (nD - iD) / nD
   where iD = fromIntegral i
         nD = fromIntegral n
 
--- | The transition rate from one boundary state to another.
+-- The transition rate from one boundary state to another.
 rate :: MutModel -> State -> State -> Double
 rate m s t
   | not $ connected s t = 0.0
@@ -72,25 +72,25 @@ rate m s t
           | otherwise = error "Cannot compute rate between states."
         rate' _ _ = error "Cannot compute rate between states."
 
--- | The transition rate from one state (index) to another.
+-- The transition rate from one state (index) to another.
 rateById :: MutModel -> PopSize -> Int -> Int -> Double
 rateById m n i j = rate m s t
   where s = idToState n i
         t = idToState n j
 
--- | The build function (see below) has a weird way of assigning entries to
+-- The build function (see below) has a weird way of assigning entries to
 -- indices. The indices have to be the same data type as the entries. This is
 -- just a helper function that changes the indices from Double to Int.
 rateByDouble :: MutModel -> PopSize -> Double -> Double -> Double
 rateByDouble m n x y = rateById m n (round x) (round y)
 
--- | The rate matrix of the boundary mutation model. The dimension with four
+-- The rate matrix of the boundary mutation model. The dimension with four
 -- alleles will be 4 + 6*(N-1).
 rateMatrix :: MutModel -> PopSize -> RateMatrix
 rateMatrix m n = setDiagonal $ build (s,s) (rateByDouble m n)
   where s = stateSpaceSize n
 
--- | Normalize the rate matrix such that on average one event happens per unit
+-- Normalize the rate matrix such that on average one event happens per unit
 -- time.
 normalizedRateMatrix :: MutModel -> PopSize -> RateMatrix
 normalizedRateMatrix m n = normalizeRates f' m'
@@ -98,20 +98,20 @@ normalizedRateMatrix m n = normalizeRates f' m'
         -- f  = dnaModelSpecGetStateFreqVec (dnaModelSpec m)
         f' = stationaryDist m n
 
--- | Calculate the heterozygosity at stationarity.
+-- Calculate the heterozygosity at stationarity.
 theta :: MutModel -> Heterozygosity
 theta (DNAModel m s) = f <.> rDiagZero #> f
   where f         = dnaModelSpecGetStateFreqVec s
         e         = toExchMatrix m f
         (r, _)    = matrixSeparateSymSkew e
-        -- | The summation excludes the diagonal (a /= b).
+        -- The summation excludes the diagonal (a /= b).
         rDiagZero = matrixSetDiagToZero r
 
--- | The normalization constant of the stationary distribution.
+-- The normalization constant of the stationary distribution.
 norm :: MutModel -> PopSize -> Double
 norm m n = 1.0 + harmonic (n-1) * theta m
 
--- | Get entries of the stationary measure (not normalized) for a boundary model state.
+-- Get entries of the stationary measure (not normalized) for a boundary model state.
 stationaryMeasEntry :: MutModel -> State -> Double
 stationaryMeasEntry m s =
   let f   = dnaModelSpecGetStateFreqVec (dnaModelSpec m) in
@@ -119,9 +119,9 @@ stationaryMeasEntry m s =
     (Bnd _ a)     -> f ! fromEnum a
     (Ply n i a b) -> piA * mAB / (fromIntegral n - fromIntegral i)
                                       + piB * mBA / fromIntegral i
-      where piA = stateFreq f a
+      where piA = stationaryFreq f a
             mAB = mutRate m a b
-            piB = stateFreq f b
+            piB = stationaryFreq f b
             mBA = mutRate m b a
 
 stationaryMeasEntryById :: MutModel -> PopSize -> Int -> Double
@@ -131,21 +131,21 @@ stationaryMeasEntryById m n i = stationaryMeasEntry m s
 stationaryMeasEntryByDouble :: MutModel -> PopSize -> Double -> Double
 stationaryMeasEntryByDouble m n x = stationaryMeasEntryById m n (round x)
 
--- | Get the stationary distribution fir a boundary mutation model.
+-- Get the stationary distribution of a boundary mutation model.
 stationaryDist :: MutModel -> PopSize -> StationaryDist
 stationaryDist m n = scale (1.0/norm m n) $
   build s (stationaryMeasEntryByDouble m n)
   where s = stateSpaceSize n
 
--- | Normalize the mutation coefficients such that the heterozygosity matches a
+-- Normalize the mutation coefficients such that the heterozygosity matches a
 -- given level (see Eq. 12.14 in my thesis).
 normalizeToTheta :: MutModel -> PopSize -> Heterozygosity -> MutModel
 normalizeToTheta mo@(DNAModel m _) n h =
   mo { dnaRateMatrix = scale (h / (t * (1.0 - c * h))) m }
   where
-    -- | The heterozygosity of the boundary mutation model.
+    -- The heterozygosity of the boundary mutation model.
     t = theta mo
-    -- | The branch length multiplicative factor introduced by the coalescent.
+    -- The branch length multiplicative factor introduced by the coalescent.
     c = harmonic (n-1)
 
 -- | Create a boundary mutation model using the minimal number of necessary
@@ -156,14 +156,22 @@ createBMM m n h = BMModel rm m' n h f
         rm = normalizedRateMatrix m n
         f  = stationaryDist m n
 
+-- | Create a boundary mutation model without providing a heterozygosity. This
+-- means that the mutation model has to be normalized already.
+createBMMNormalized :: DNAModel -> PopSize -> BMModel
+createBMMNormalized m n = BMModel rm m n h f
+  where rm = normalizedRateMatrix m n
+        h  = theta m
+        f  = stationaryDist m n
+
 -- | The branch lengths of threes in the boundary mutation model are not
 -- measured in average number of substitutions per site but in average number of
 -- mutations or frequency shifts per site. The conversion factor is just the
 -- square of the population size. This function converts the branch lengths of a
 -- tree.
-scaleTreeToBMM :: PopSize -> RTree a Double -> RTree a Double
-scaleTreeToBMM n = fmap (* nSq)
-  where nSq = fromIntegral n ** 2
+scaleTreeToBMM :: BMModel -> RTree a Double -> RTree a Double
+scaleTreeToBMM bmm = fmap (* nSq)
+  where nSq = fromIntegral (bmmPopSize bmm) ** 2
 
 -- | Report the boundary mutation model specifications.
 getBMMInfoStr :: BMModel

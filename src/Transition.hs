@@ -13,12 +13,13 @@ a tree with states according to a stationary distribution, etc.
 
 The implementation of the Markov process is more than basic and can be improved in a lot of ways.
 
+TODO: Try https://hackage.haskell.org/package/Dist-0.4.1.0/docs/Numeric-Probability-Distribution.html
+
 * Changelog
 
 -}
 
 module Transition where
-
 import           Control.Monad.Random.Strict hiding (fromList)
 import           Data.Distribution           hiding (toList)
 import           Numeric.LinearAlgebra       hiding (fromList)
@@ -45,7 +46,7 @@ branchLengthsToTransitionProbs m = fmap (probMatrix m)
 -- https://hackage.haskell.org/package/distribution-1.1.0.0/docs/Data-Distribution-Sample.html).
 -- This function is the bottleneck of the simulator and takes up most of the
 -- computation time. However, I was not able to find a faster implementation
--- that the one from Data.Distribution.
+-- than the one from Data.Distribution.
 jump :: (MonadRandom m) => State -> [Generator State] -> m State
 jump (State s) p = target
   where !target = getSample $ p !! s

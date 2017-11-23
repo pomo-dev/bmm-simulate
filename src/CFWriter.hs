@@ -17,6 +17,9 @@ size, etc.), write the data to file using counts file format.
 module CFWriter
   ( Pos
   , DataOneSite
+  , NSites
+  , PopulationNames
+  , Chrom
   , writeHeader
   , writeLine
   , open

@@ -127,7 +127,7 @@ simulate = do
                      where recipRate = fromMaybe (error "No Yule reciprocal speciation rate specified.")
                                        maybeTreeYuleRate
                    _      -> error $ "Tree type not recognized: " ++ treeType
-      treeBMM     = BMM.scaleTreeToBMM popSize treeSubs
+      treeBMM     = BMM.scaleTreeToBMM bmm treeSubs
       popNames   = Tree.getLeaves treeBMM
       treePrb    = Trans.branchLengthsToTransitionProbs (BMM.bmmRateMatrix bmm) treeBMM
       treeGen    = Trans.treeProbMatrixToTreeGenerator treePrb
@@ -168,19 +168,19 @@ simulate = do
           >>= writer pos . toStates
         else
           -- Gamma rate heterogeneity is activated.
-          evalRandIO (Trans.simulateSiteGen uniformGen bmStationaryGens treesGen)
+          evalRandIO (Trans.simulateSiteGen uniformGen bmmStationaryGens treesGen)
           >>= writer pos . toStates
-        where nCat              = fromMaybe (error "The number of gamma rate categories was not given.") gammaNCat
-              uniformGen        = D.fromDistribution $ D.uniform [0 .. nCat - 1]
-              means             = fromMaybe (error "No gamma shape parameter given.") gammaMeans
-              scaleMutModel s m = m { DNA.dnaRateMatrix = scale s (DNA.dnaRateMatrix m) }
-              mutationModel     = BMM.bmmMutModel bmm
-              mutationModels    = [ scaleMutModel s mutationModel | s <- means ]
-              bmRateMatrices    = [ BMM.normalizedRateMatrix m popSize | m <- mutationModels ]
-              bmStationaryDists = [ BMM.stationaryDist m popSize | m <- mutationModels ]
-              bmStationaryGens  = map Trans.stationaryDistToGenerator bmStationaryDists
-              treesPrb          = [ Trans.branchLengthsToTransitionProbs b treeBMM | b <- bmRateMatrices ]
-              treesGen          = map Trans.treeProbMatrixToTreeGenerator treesPrb
+        where nCat               = fromMaybe (error "The number of gamma rate categories was not given.") gammaNCat
+              uniformGen         = D.fromDistribution $ D.uniform [0 .. nCat - 1]
+              means              = fromMaybe (error "No gamma shape parameter given.") gammaMeans
+              mutationModel      = BMM.bmmMutModel bmm
+              mutationModels     = [ DNA.dnaModelScale s mutationModel | s <- means ]
+              bmms               = [ BMM.createBMMNormalized m popSize | m <- mutationModels ]
+              bmmStationaryDists = map BMM.bmmStationaryDist bmms
+              bmmStationaryGens  = map Trans.stationaryDistToGenerator bmmStationaryDists
+              bmmRateMatrices    = map BMM.bmmRateMatrix bmms
+              treesPrb           = [ Trans.branchLengthsToTransitionProbs b treeBMM | b <- bmmRateMatrices ]
+              treesGen           = map Trans.treeProbMatrixToTreeGenerator treesPrb
   liftIO $ forM_ [1..nSites] simAndPrintOneSite
 
   -- Done.
