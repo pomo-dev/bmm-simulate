@@ -19,7 +19,8 @@ import qualified ArgParse                         as Args
 import qualified BndModel                         as BMM
 import qualified BndState                         as BMS
 import qualified CFWriter                         as CF
-import Control.Monad.Logger
+import           Control.Monad                    (when)
+import           Control.Monad.Logger
 import           Control.Monad.Random.Strict
 import           Control.Monad.Trans.State.Strict
 import qualified Data.Distribution                as D
@@ -108,13 +109,18 @@ simulate = do
   let bmmA       = bmmArgs params
       dnaModelSpec = Args.dnaModelSpec bmmA
       dnaModel   = DNA.rateMatrix dnaModelSpec
-  -- Gamma rate heterogeneity, handled with the Maybe monad.
+  -- Gamma rate heterogeneity, handled with the Maybe monad. For future
+  -- reference, it would be much cleaner to have a rate heterogeneity data type
+  -- which consists of the shape parameter and the number of categories (and
+  -- also the type of the rate heterogeneity if more than gamma is supported).
+  -- It should also be specified with ONE option. E.g., --rate-heterogeneity
+  -- GAMMA[0.1][4]. Because then, either all parameters have to be given, or
+  -- none.
   let gammaShape = Args.gammaShape bmmA
-  gammaNCat <- if isNothing gammaShape
-               then logStr "WARNING: Gamma rate heterogeneity not activated but number of categories has been set.\n" >>
-                    return Nothing
-               else return $ Args.gammaNCat bmmA
-  let gammaMeans = liftM2 G.getMeans gammaNCat gammaShape
+      gammaNCat  = Args.gammaNCat bmmA
+      gammaMeans = liftM2 G.getMeans gammaNCat gammaShape
+  when (isNothing gammaShape && isJust gammaNCat) $
+    logStr "WARNING: Gamma rate heterogeneity not activated but number of categories has been set.\n"
   -- Boundary mutation model.
   let popSize          = Args.popSize bmmA
       heterozygosity   = Args.heterozygosity bmmA
@@ -123,8 +129,11 @@ simulate = do
   -- Tree.
   let treeHeight             = Args.treeHeight bmmA
       treeType               = Args.treeType bmmA
-      maybeTreeYuleRate = Args.treeYuleRate bmmA
-      (treeSubs, scenario)   = case treeType of
+      -- Same here, check comment about gamma rate heterogeneity above.
+      maybeTreeYuleRate      = Args.treeYuleRate bmmA
+  when (treeType /= "Yule" && isJust maybeTreeYuleRate) $
+    logStr "WARNING: Yule speciation rate given but species tree is not of type Yule.\n"
+  let (treeSubs, scenario)   = case treeType of
                    "ILS"  -> Tree.ils treeHeight
                    "Yule" -> fst $ sampleState (Tree.yule treeHeight recipRate) (gen params)
                      where recipRate = fromMaybe (error "No Yule reciprocal speciation rate specified.")
