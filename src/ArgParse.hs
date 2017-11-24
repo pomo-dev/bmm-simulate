@@ -160,7 +160,7 @@ gammaShapeOpt :: Parser (Maybe Double)
 gammaShapeOpt = optional $ option auto
   ( long "gamma-shape"
     <> metavar "DOUBLE"
-    <> help "Set gamma shape parameter; activate gamma rate heterogeneity (default: off)" )
+    <> help "Activate gamma rate heterogeneity and set gamma shape parameter (default: off)" )
 
 gammaNCatOpt :: Parser (Maybe Int)
 gammaNCatOpt = optional $ option auto

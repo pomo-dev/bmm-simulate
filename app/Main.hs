@@ -109,9 +109,12 @@ simulate = do
       dnaModelSpec = Args.dnaModelSpec bmmA
       dnaModel   = DNA.rateMatrix dnaModelSpec
   -- Gamma rate heterogeneity, handled with the Maybe monad.
-  let gammaNCat  = Args.gammaNCat bmmA
-      gammaShape = Args.gammaShape bmmA
-      gammaMeans = liftM2 G.getMeans gammaNCat gammaShape
+  let gammaShape = Args.gammaShape bmmA
+  gammaNCat <- if isNothing gammaShape
+               then logStr "WARNING: Gamma rate heterogeneity not activated but number of categories has been set.\n" >>
+                    return Nothing
+               else return $ Args.gammaNCat bmmA
+  let gammaMeans = liftM2 G.getMeans gammaNCat gammaShape
   -- Boundary mutation model.
   let popSize          = Args.popSize bmmA
       heterozygosity   = Args.heterozygosity bmmA
@@ -127,13 +130,13 @@ simulate = do
                      where recipRate = fromMaybe (error "No Yule reciprocal speciation rate specified.")
                                        maybeTreeYuleRate
                    _      -> error $ "Tree type not recognized: " ++ treeType
-      treeBMM     = BMM.scaleTreeToBMM bmm treeSubs
+      treeBMM    = BMM.scaleTreeToBMM bmm treeSubs
       popNames   = Tree.getLeaves treeBMM
       treePrb    = Trans.branchLengthsToTransitionProbs (BMM.bmmRateMatrix bmm) treeBMM
       treeGen    = Trans.treeProbMatrixToTreeGenerator treePrb
   -- Other options.
-  let nSites       = Args.nSites bmmA
-      fileName     = Args.outFileName bmmA
+  let nSites     = Args.nSites bmmA
+      fileName   = Args.outFileName bmmA
 
   -- $(logError) $ pack "An error ocurred."
 
