@@ -29,7 +29,6 @@ import           Data.Random
 -- import Data.Text (pack)
 import qualified DNAModel                         as DNA
 import qualified GammaRate                        as G
-import           Numeric.LinearAlgebra
 import qualified RateMatrix                       as RM
 import qualified RTree                            as Tree
 import qualified System.Environment               as Sys
@@ -125,7 +124,7 @@ simulate = do
   let popSize          = Args.popSize bmmA
       heterozygosity   = Args.heterozygosity bmmA
       bmm              = BMM.createBMM dnaModel popSize heterozygosity
-      bmmStationaryGen  = Trans.stationaryDistToGenerator (BMM.bmmStationaryDist bmm)
+      bmmStationaryGen = Trans.stationaryDistToGenerator (BMM.bmmStationaryDist bmm)
   -- Tree.
   let treeHeight             = Args.treeHeight bmmA
       treeType               = Args.treeType bmmA
@@ -136,7 +135,7 @@ simulate = do
   let (treeSubs, scenario)   = case treeType of
                    "ILS"  -> Tree.ils treeHeight
                    "Yule" -> fst $ sampleState (Tree.yule treeHeight recipRate) (gen params)
-                     where recipRate = fromMaybe (error "No Yule reciprocal speciation rate specified.")
+                     where recipRate = fromMaybe (error "No Yule speciation rate specified.")
                                        maybeTreeYuleRate
                    _      -> error $ "Tree type not recognized: " ++ treeType
       treeBMM    = BMM.scaleTreeToBMM bmm treeSubs
