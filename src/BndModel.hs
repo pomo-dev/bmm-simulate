@@ -153,7 +153,7 @@ normalizeToTheta mo@(DNAModel m _) n h =
 createBMM :: DNAModel -> PopSize -> Heterozygosity -> BMModel
 createBMM m n h = BMModel rm m' n h f
   where m' = normalizeToTheta m n h
-        rm = normalizedRateMatrix m n
+        rm = normalizedRateMatrix m' n
         f  = stationaryDist m n
 
 -- | Create a boundary mutation model without providing a heterozygosity. This
