@@ -17,7 +17,7 @@ phylogenetic analysis.
 module RTree
   ( BranchLn
   , RTree(..)
-  , Scenario
+  , Scenario(..)
   , totalBrLn
   , getLeaves
   , toNewick

@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-stack build -j4 --profile --executable-profiling --library-profiling
+stack build -j4 --profile
 # stack build --profile

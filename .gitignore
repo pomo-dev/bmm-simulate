@@ -7,6 +7,8 @@ bmm-simulate.stat*
 bmm-simulate.hp*
 bmm-simulate.ps*
 bmm-simulate.aux*
+bmm-simulate.eventlog*
 *.cf
 *.tree
-/Test.cf.*
+*.cf.gz
+*.log

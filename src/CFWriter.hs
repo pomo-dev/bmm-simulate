@@ -21,13 +21,17 @@ module CFWriter
   , PopulationNames
   , Chrom
   , writeHeader
+  , writeHeaderGZ
   , writeLine
+  , writeLineGZ
   , open
   ) where
 
 import           BndState
+import qualified Codec.Compression.GZip as GZ
+import qualified Data.ByteString.Lazy.Char8  as BS
 import           System.IO
-import           Tools     (left, right)
+import           Tools                  (left, right)
 
 -- | The number of sites that will be printed.
 type NSites = Int
@@ -65,14 +69,25 @@ getDataLine chrom pos bstates = left colW chrom ++ right colW (show pos) ++ bSta
 open :: FilePath -> IO Handle
 open file = openFile file WriteMode
 
--- | Write a counts file. For now, the chromosome name is set to SIM for
+-- | Write a counts file header. For now, the chromosome name is set to SIM for
 -- simulated and the position is just a counter starting at 1.
 writeHeader :: Handle -> NSites -> PopulationNames -> IO ()
 writeHeader handle nSites popNames =
   hPutStr handle $ header nSites popNames
+
+-- | See 'writeHeader' but gzipped.
+writeHeaderGZ :: Handle -> NSites -> PopulationNames -> IO ()
+writeHeaderGZ handle nSites popNames =
+  BS.hPut handle $ GZ.compress . BS.pack $ header nSites popNames
 
 -- | Write a counts file line including chromosome (which will be SIM for the
 -- simulation), position (consecutively numbered) and the data.
 writeLine :: Handle -> Chrom -> Pos -> DataOneSite -> IO ()
 writeLine handle chr pos bStates =
   hPutStr handle $ getDataLine chr pos bStates
+
+-- | See 'writeLine' but gzipped.
+writeLineGZ :: Handle -> Chrom -> Pos -> DataOneSite -> IO ()
+writeLineGZ handle chr pos bStates =
+  BS.hPut handle $ GZ.compress . BS.pack $ getDataLine chr pos bStates
+

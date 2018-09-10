@@ -21,7 +21,7 @@ import qualified System.Random         as Rand
 
 -- | Output file name.
 outFileName :: String
-outFileName = "Test.cf"
+outFileName = "Test"
 
 -- | Virtual population size.
 popSize :: Int

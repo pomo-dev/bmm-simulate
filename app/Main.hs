@@ -144,7 +144,7 @@ simulate = do
       treeGen    = Trans.treeProbMatrixToTreeGenerator treePrb
   -- Other options.
   let nSites     = Args.nSites bmmA
-      fileName   = Args.outFileName bmmA
+      fileNameGZ   = Args.outFileName bmmA ++ ".cf.gz"
 
   -- $(logError) $ pack "An error ocurred."
 
@@ -153,7 +153,7 @@ simulate = do
 
   logStr $ getHeadlineStr "General options."
   logStr $ getGeneratorStr (Args.seed bmmA) (gen params)
-  logStr $ getFileNamesStr fileName (treeFilePath params)
+  logStr $ getFileNamesStr fileNameGZ (treeFilePath params)
   logStr $ "Number of simulated sites: " ++ show nSites ++ "\n"
 
   logStr $ getHeadlineStr "Boundary mutation model options."
@@ -167,11 +167,11 @@ simulate = do
 
   logStr $ getHeadlineStr "Performing simulation."
   -- Prepare output file.
-  treeHandle <- liftIO $ CF.open fileName
-  liftIO $ CF.writeHeader treeHandle nSites popNames
+  cfGZHandle <- liftIO $ CF.open fileNameGZ
+  liftIO $ CF.writeHeaderGZ cfGZHandle nSites popNames
   -- Simulation helpers.
   let toStates = map (BMS.rmStateToBMState popSize . snd) :: [(a, RM.State)] -> [BMS.State]
-      writer   = CF.writeLine treeHandle "SIM"    :: CF.Pos -> CF.DataOneSite -> IO ()
+      writer   = CF.writeLineGZ cfGZHandle "SIM"    :: CF.Pos -> CF.DataOneSite -> IO ()
   -- Simulation; loop over positions.
   let simAndPrintOneSite pos =
         if isNothing gammaShape then
@@ -196,7 +196,7 @@ simulate = do
 
   -- Done.
   logStr "Done.\n"
-  liftIO $ hClose treeHandle
+  liftIO $ hClose cfGZHandle
   liftIO $ hClose (logHandle params)
 
 main :: IO BMMParams

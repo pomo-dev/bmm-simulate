@@ -100,10 +100,10 @@ outFileNameOpt :: Parser String
 outFileNameOpt = strOption
   ( long "output"
     <> short 'o'
-    <> metavar "FILEPATH"
+    <> metavar "NAME"
     <> value Def.outFileName
     <> showDefault
-    <> help "Write output to FILEPATH in counts file format" )
+    <> help "Write output files to NAME.[cf.gz|log|tree]" )
 
 -- Read a stationary frequency of the form `pi_A,pi_C,pi_G,...`.
 parseStateFreq :: A.Parser StationaryDist
