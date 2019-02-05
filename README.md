@@ -65,7 +65,7 @@ stack install
 
 Now, the binary can be directly used.
 
-* Help text
+# Help text
 A copy of the output of `bmm-simulate --help` is pasted below.
 
 ```
