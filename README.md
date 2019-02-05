@@ -37,7 +37,7 @@ following papers in reverse chronological order.
 `bmm-simulate` is written in [Haskell](https://www.haskell.org/) and can be
 installed with [Stack](https://docs.haskellstack.org/en/stable/README/).
 
-1. Install stack with your package manager, or directly from the web page.
+1. Install Stack with your package manager, or directly from the web page.
 ```
 curl -sSL https://get.haskellstack.org/ | sh
 ```
@@ -53,7 +53,7 @@ git clone https://github.com/pomo-dev/bmm-simulate.git
 stack build
 ```
 
-4. Run `bmm-simualate` from within the project directory.
+4. Run `bmm-simulate` from within the project directory.
 ```
 stack exec bmm-simulate -- --help
 ```
