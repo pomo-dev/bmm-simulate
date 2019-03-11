@@ -1,6 +1,7 @@
 TAGS
-.stack-work/*
-dist/*
+/.stack-work/*
+/dist/*
+/dist-newstyle/*
 /data/*
 bmm-simulate.prof*
 bmm-simulate.stat*

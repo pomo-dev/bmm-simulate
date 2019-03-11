@@ -188,7 +188,7 @@ heterozygosityOpt = option auto
 treeHeightOpt :: Parser Double
 treeHeightOpt = option auto
   ( long "tree-height"
-    <> short 'h'
+    <> short 'H'
     <> metavar "DOUBLE"
     <> value Def.treeHeight
     <> showDefault
